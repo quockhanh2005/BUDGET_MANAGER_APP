@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Budget Manager - Đăng ký thành viên với MetaMask" />
+  <title>Budget Manager - Đăng Ký Thành Viên</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <!-- Các khối hình động nền -->
+  <div class="bg-shapes">
+    <div class="shape shape-1"></div>
+    <div class="shape shape-2"></div>
+    <div class="shape shape-3"></div>
+  </div>
+
+  <div class="container">
+    <!-- Phần đầu trang -->
+    <header class="header">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+            <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+            <path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z" />
+          </svg>
+        </div>
+        <h1>Budget Manager</h1>
+      </div>
+      <p class="subtitle">Quản lý ngân sách thông minh trên Blockchain</p>
+    </header>
+
+    <!-- Thẻ chính -->
+    <main class="main-card">
+      <!-- Chỉ báo các bước -->
+      <div class="steps">
+        <div class="step active" id="step-indicator-1">
+          <div class="step-number">1</div>
+          <span>Kết nối ví</span>
+        </div>
+        <div class="step-line" id="step-line-1"></div>
+        <div class="step" id="step-indicator-2">
+          <div class="step-number">2</div>
+          <span>Thông tin</span>
+        </div>
+        <div class="step-line" id="step-line-2"></div>
+        <div class="step" id="step-indicator-3">
+          <div class="step-number">3</div>
+          <span>Xác nhận</span>
+        </div>
+      </div>
+
+      <!-- Bước 1: Kết nối Ví -->
+      <section class="step-content active" id="step-1">
+        <div class="wallet-section">
+          <div class="metamask-logo">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" alt="MetaMask" width="80"
+              height="80" />
+          </div>
+          <h2>Kết nối MetaMask</h2>
+          <p class="description">
+            Kết nối ví MetaMask của bạn để bắt đầu đăng ký thành viên. Địa chỉ
+            ví sẽ được sử dụng làm định danh trên blockchain.
+          </p>
+
+          <div class="wallet-status" id="wallet-status">
+            <div class="status-dot disconnected"></div>
+            <span>Chưa kết nối</span>
+          </div>
+
+          <button class="btn btn-primary btn-connect" id="btn-connect" onclick="connectWallet()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+              <polyline points="10 17 15 12 10 7" />
+              <line x1="15" y1="12" x2="3" y2="12" />
+            </svg>
+            Kết nối MetaMask
+          </button>
+
+          <!-- Trạng thái đã kết nối (mặc định ẩn) -->
+          <div class="wallet-connected hidden" id="wallet-connected">
+            <div class="wallet-address-card">
+              <div class="wallet-label">Địa chỉ ví đã kết nối</div>
+              <div class="wallet-address" id="wallet-address">0x...</div>
+              <div class="wallet-network" id="wallet-network">
+                <span class="network-dot"></span>
+                <span id="network-name">--</span>
+              </div>
+            </div>
+            <button type="button" class="btn btn-primary" onclick="handleContinue()">
+              Tiếp tục
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Bước 2: Form thông tin thành viên -->
+      <section class="step-content" id="step-2">
+        <h2>Thông tin thành viên</h2>
+        <p class="description">
+          Điền thông tin cá nhân để đăng ký thành viên Budget Manager.
+        </p>
+
+        <form id="member-form" onsubmit="return false;">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="member_id">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="5" width="20" height="14" rx="2" />
+                  <line x1="2" y1="10" x2="22" y2="10" />
+                </svg>
+                Mã định danh (CCCD)
+              </label>
+              <input type="text" id="member_id" placeholder="Nhập số CCCD..." required />
+              <span class="form-hint">Mã định danh duy nhất, không thể thay đổi</span>
+            </div>
+
+            <div class="form-group">
+              <label for="name">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                Họ và tên
+              </label>
+              <input type="text" id="name" placeholder="Nhập họ và tên..." required />
+            </div>
+
+            <div class="form-group">
+              <label for="age">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+                Tuổi
+              </label>
+              <input type="number" id="age" placeholder="Nhập tuổi..." min="1" max="150" required />
+            </div>
+
+            <div class="form-group">
+              <label for="email">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                  <polyline points="22,6 12,13 2,6" />
+                </svg>
+                Email (tuỳ chọn)
+              </label>
+              <input type="email" id="email" placeholder="Nhập email..." />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+                <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+                <path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z" />
+              </svg>
+              Địa chỉ ví
+            </label>
+            <input type="text" id="wallet-display" readonly disabled />
+            <span class="form-hint">Được lấy tự động từ MetaMask</span>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="goToStep(1)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12" />
+                <polyline points="12 19 5 12 12 5" />
+              </svg>
+              Quay lại
+            </button>
+            <button type="button" class="btn btn-primary" onclick="goToStep(3)">
+              Xem lại & Ký
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Bước 3: Xem lại & Ký -->
+      <section class="step-content" id="step-3">
+        <h2>Xác nhận & Ký</h2>
+        <p class="description">
+          Kiểm tra lại thông tin và ký xác nhận bằng MetaMask để hoàn tất đăng
+          ký.
+        </p>
+
+        <div class="review-card">
+          <div class="review-header">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" />
+            </svg>
+            Thông tin đăng ký
+          </div>
+          <div class="review-body">
+            <div class="review-row">
+              <span class="review-label">Mã định danh</span>
+              <span class="review-value" id="review-member-id">--</span>
+            </div>
+            <div class="review-row">
+              <span class="review-label">Họ và tên</span>
+              <span class="review-value" id="review-name">--</span>
+            </div>
+            <div class="review-row">
+              <span class="review-label">Tuổi</span>
+              <span class="review-value" id="review-age">--</span>
+            </div>
+            <div class="review-row">
+              <span class="review-label">Email</span>
+              <span class="review-value" id="review-email">--</span>
+            </div>
+            <div class="review-row">
+              <span class="review-label">Địa chỉ ví</span>
+              <span class="review-value review-address" id="review-address">--</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sign-info">
+          <div class="sign-info-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="16" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12.01" y2="8" />
+            </svg>
+          </div>
+          <p>
+            Khi bạn nhấn "Ký & Đăng ký", MetaMask sẽ yêu cầu bạn ký một
+            message xác minh danh tính. Chữ ký này chứng minh bạn là chủ sở
+            hữu ví.
+          </p>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="goToStep(2)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12" />
+              <polyline points="12 19 5 12 12 5" />
+            </svg>
+            Chỉnh sửa
+          </button>
+          <button type="button" class="btn btn-success" id="btn-sign" onclick="signAndSubmit()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+            Ký & Đăng ký
+          </button>
+        </div>
+      </section>
+
+      <!-- Màn hình Dashboard (Giao diện chính sau khi đăng nhập) -->
+      <section class="step-content" id="step-dashboard">
+        <div class="dashboard-container">
+          <!-- Header -->
+          <div class="dashboard-header">
+            <div class="user-welcome">
+              <h2 id="dashboard-user-name">Chào mừng, --</h2>
+              <p class="description">Quản lý tài chính cá nhân của bạn</p>
+            </div>
+            <div class="account-status">
+              <span class="status-badge" id="dashboard-wallet-status">--</span>
+            </div>
+          </div>
+
+          <!-- Main Grid -->
+          <div class="dashboard-grid">
+            <!-- CỘT TRÁI: Tài chính & Hành động -->
+            <div class="dash-column">
+              <!-- Thẻ số dư -->
+              <div class="dash-card balance-card">
+                <div class="card-header-mini">
+                  <span class="card-label">Tổng số dư khả dụng</span>
+                  <button id="toggle-visibility" class="btn-icon-sm" onclick="toggleBalanceVisibility()">
+                    <svg id="eye-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                  </button>
+                </div>
+                <div class="balance-amount">
+                  <span id="dashboard-balance">0.00</span>
+                  <span class="currency">ETH</span>
+                </div>
+                <div class="wallet-address-mini" id="dashboard-address">0x...</div>
+              </div>
+
+              <!-- Menu Hành động nhanh -->
+              <div class="quick-actions-grid">
+                <button class="action-item" onclick="showToast('info', 'Tính năng Nạp tiền đang phát triển')">
+                  <div class="action-icon purple"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div>
+                  <span>Nạp tiền</span>
+                </button>
+                <button class="action-item" onclick="showToast('info', 'Tính năng Chuyển tiền đang phát triển')">
+                  <div class="action-icon blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></div>
+                  <span>Chuyển tiền</span>
+                </button>
+                <button class="action-item" onclick="showToast('info', 'Tính năng Quản lý quỹ đang phát triển')">
+                  <div class="action-icon green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+                  <span>Quỹ (Budget)</span>
+                </button>
+                <button class="action-item" onclick="resetForm()">
+                  <div class="action-icon gray"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></div>
+                  <span>Đăng xuất</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- CỘT PHẢI: Thông tin & Trạng thái -->
+            <div class="dash-column">
+              <!-- Thẻ thông tin thành viên -->
+              <div class="dash-card profile-card">
+                <div class="card-title">Hồ sơ cá nhân</div>
+                <div class="info-list">
+                  <div class="info-item">
+                    <span class="info-label">ID Định danh</span>
+                    <span class="info-value" id="dashboard-member-id">--</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">Email</span>
+                    <span class="info-value" id="dashboard-email">--</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">Ngày gia nhập</span>
+                    <span class="info-value" id="dashboard-created-at">--</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Placeholder cho Lịch sử hoặc Quỹ -->
+              <div class="dash-card empty-state-card">
+                <div class="empty-icon">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>
+                </div>
+                <p>Chưa có dữ liệu giao dịch</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+    </main>
+
+    <!-- Phần chân trang -->
+    <footer class="footer">
+      <p>© 2026 Budget Manager — Powered by Ethereum & MetaMask</p>
+    </footer>
+  </div>
+
+  <!-- Thông báo Toast -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Lớp phủ tải dữ liệu -->
+  <div class="loading-overlay hidden" id="loading-overlay">
+    <div class="loading-spinner">
+      <div class="spinner"></div>
+      <p id="loading-text">Đang xử lý...</p>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
