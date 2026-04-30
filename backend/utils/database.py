@@ -1,10 +1,8 @@
 import os
 import logging
 from pymongo import MongoClient
-from dotenv import load_dotenv
 from abc import ABC, abstractmethod
-
-load_dotenv()
+from backend import config
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +24,8 @@ class DatabaseProvider(ABC):
 
 class MongoProvider(DatabaseProvider):
     def __init__(self):
-        self.uri = os.getenv("MONGO_URI")
-        self.db_name = os.getenv("MONGO_DB_NAME", "budget_manager")
+        self.uri = config.MONGO_URI
+        self.db_name = config.MONGO_DB_NAME
         self.client = None
 
     def connect(self):
@@ -82,7 +80,7 @@ class DatabaseFactory:
             raise ValueError(f"Unsupported database type: {db_type}")
 
 # Singleton instance based on configuration
-DATABASE_TYPE = os.getenv("DATABASE_TYPE", "mongodb")
+DATABASE_TYPE = config.DATABASE_TYPE
 db_instance = DatabaseFactory.get_provider(DATABASE_TYPE)
 
 # For backward compatibility or direct access if needed

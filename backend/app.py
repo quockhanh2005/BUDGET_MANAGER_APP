@@ -6,6 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 # Add the project root to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from backend import config
+
 from backend.api.member import router as member_router
 
 app = FastAPI(title="Budget Manager API")
