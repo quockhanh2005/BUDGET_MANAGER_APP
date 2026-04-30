@@ -3,7 +3,7 @@ from backend.service.member import MemberService
 from backend.models.member import MemberRequest, MemberResponse
 from backend.utils.auth import verify_eth_signature
 
-router = APIRouter(prefix="/members", tags=["Members"])
+router = APIRouter(prefix="/members", tags=["members"])
 member_service = MemberService()
 
 # Base URL = "localhost:8080/members"
