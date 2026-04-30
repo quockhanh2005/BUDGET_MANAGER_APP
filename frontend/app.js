@@ -11,6 +11,13 @@ const SIGN_MESSAGE_PREFIX = 'Budget Manager - Xác minh danh tính cho địa ch
 let currentStep = 1;
 let connectedAddress = null;
 let connectedChainId = null;
+let currentBudgetId = null;
+
+// ========== Mock Data cho Budget ==========
+const MOCK_BUDGETS = [];
+
+// ========== Mock Data cho Giao dịch chính ==========
+const MOCK_MAIN_TRANSACTIONS = [];
 
 // ========== Khởi tạo ==========
 document.addEventListener('DOMContentLoaded', async () => {
@@ -31,6 +38,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (err) {
             console.error('Error auto-connecting:', err);
         }
+    }
+
+    // Thêm listener cho loại quỹ "Khác"
+    const budgetTypeSelect = document.getElementById('create-budget-type');
+    const budgetTypeOtherContainer = document.getElementById('budget-type-other-container');
+    
+    if (budgetTypeSelect && budgetTypeOtherContainer) {
+        budgetTypeSelect.addEventListener('change', (e) => {
+            console.log('Budget type changed to:', e.target.value);
+            if (e.target.value === 'Khác') {
+                budgetTypeOtherContainer.classList.remove('hidden');
+                document.getElementById('budget-type-other').focus();
+            } else {
+                budgetTypeOtherContainer.classList.add('hidden');
+            }
+        });
     }
 });
 
@@ -142,6 +165,12 @@ function getNetworkName(chainId) {
     return networks[chainId] || `Chain ID: ${parseInt(chainId, 16)}`;
 }
 
+function shortenAddress(address) {
+    if (!address) return '';
+    if (address.length < 10) return address;
+    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+}
+
 function listenForAccountChanges() {
     if (typeof window.ethereum === 'undefined') return;
 
@@ -170,13 +199,18 @@ function goToStep(step) {
     console.log('Going to step:', step);
     const container = document.querySelector('.container');
     
-    // Nếu là dashboard, ẩn toàn bộ thanh tiến trình và mở rộng khung
-    if (step === 'dashboard') {
+    // Nếu là dashboard hoặc budget-dashboard hoặc budget-management, ẩn toàn bộ thanh tiến trình và mở rộng khung
+    if (step === 'dashboard' || step === 'budget-dashboard' || step === 'budget-management') {
         container.classList.add('wide');
         document.querySelector('.steps').style.display = 'none';
         document.querySelectorAll('.step-content').forEach(el => el.classList.remove('active'));
-        document.getElementById('step-dashboard').classList.add('active');
-        currentStep = 'dashboard';
+        let targetId;
+        if (step === 'dashboard') targetId = 'step-dashboard';
+        else if (step === 'budget-dashboard') targetId = 'step-budget-dashboard';
+        else targetId = 'step-budget-management';
+        
+        document.getElementById(targetId).classList.add('active');
+        currentStep = step;
         return;
     }
 
@@ -393,6 +427,9 @@ async function signAndSubmit() {
 async function renderDashboard(member) {
     console.log('Rendering dashboard for:', member.name);
     
+    const container = document.querySelector('.container');
+    container.classList.add('wide');
+
     // Ẩn chỉ báo bước
     document.querySelector('.steps').style.display = 'none';
 
@@ -431,6 +468,156 @@ async function renderDashboard(member) {
     // Hiện dashboard
     document.querySelectorAll('.step-content').forEach(el => el.classList.remove('active'));
     document.getElementById('step-dashboard').classList.add('active');
+    // Render lịch sử giao dịch chính
+    renderMainTransactions();
+    // Render danh sách quỹ tóm tắt
+    renderBudgets();
+}
+
+function renderMainTransactions() {
+    const listEl = document.getElementById('main-transaction-list');
+    if (!listEl) return;
+
+    if (MOCK_MAIN_TRANSACTIONS.length === 0) {
+        listEl.innerHTML = '<div class="empty-state"><p>Chưa có giao dịch nào</p></div>';
+        return;
+    }
+
+    listEl.innerHTML = '';
+    MOCK_MAIN_TRANSACTIONS.forEach(tx => {
+        const div = document.createElement('div');
+        div.className = 'transaction-item';
+        div.innerHTML = `
+            <div class="tx-info">
+                <span class="tx-title">${tx.title}</span>
+                <span class="tx-date">${new Date(tx.date).toLocaleDateString('vi-VN')}</span>
+            </div>
+            <div class="tx-amount ${tx.type}">
+                ${tx.amount > 0 ? '+' : ''}${tx.amount.toFixed(2)} ETH
+            </div>
+        `;
+        listEl.appendChild(div);
+    });
+}
+
+async function renderBudgets() {
+    const listEl = document.getElementById('budgets-list');
+    if (!listEl) return;
+
+    // Lấy dữ liệu thật từ API
+    const budgetList = await fetchBudgets();
+
+    if (budgetList.length === 0) {
+        listEl.innerHTML = '<div class="empty-state"><p>Bạn chưa tham gia quỹ nào</p></div>';
+        return;
+    }
+
+    listEl.innerHTML = '';
+    budgetList.forEach(budget => {
+        const item = document.createElement('div');
+        item.className = 'budget-item';
+        item.onclick = () => openBudgetDashboard(budget.id);
+        
+        item.innerHTML = `
+            <div class="budget-info">
+                <span class="budget-name">${budget.name}</span>
+                <span class="budget-meta">${budget.type} • ${budget.members.length} thành viên</span>
+            </div>
+            <div class="budget-item-balance">
+                <span class="budget-item-amount">${budget.balance.toFixed(2)}</span>
+                <span class="budget-item-currency">ETH</span>
+            </div>
+        `;
+        listEl.appendChild(item);
+    });
+}
+
+async function openBudgetDashboard(budgetId) {
+    currentBudgetId = budgetId;
+    showLoading('Đang tải dữ liệu quỹ...');
+    
+    try {
+        const budgetList = await fetchBudgets();
+        const budget = budgetList.find(b => b.id === budgetId);
+        
+        if (!budget) {
+            hideLoading();
+            showToast('error', 'Không tìm thấy thông tin quỹ');
+            return;
+        }
+
+        renderBudgetDashboard(budget);
+        goToStep('budget-dashboard');
+        hideLoading();
+    } catch (err) {
+        hideLoading();
+        showToast('error', 'Lỗi khi tải dữ liệu quỹ');
+        console.error(err);
+    }
+}
+
+function renderBudgetDashboard(budget) {
+    // Cập nhật thông tin cơ bản
+    document.getElementById('budget-title').textContent = budget.name;
+    document.getElementById('budget-id-display').textContent = budget.id;
+    document.getElementById('budget-description').textContent = budget.description;
+    document.getElementById('budget-status').textContent = 'Hoạt động';
+    document.getElementById('budget-type').textContent = budget.type;
+    
+    // Hiệu ứng số nhảy cho balance
+    animateNumber('budget-balance', 0, budget.balance, 800);
+
+    // Render thành viên
+    const membersList = document.getElementById('budget-members-list');
+    document.getElementById('budget-member-count').textContent = `${budget.members.length} thành viên`;
+    membersList.innerHTML = '';
+    budget.members.forEach(member => {
+        const div = document.createElement('div');
+        div.className = 'member-item';
+        div.innerHTML = `
+            <div class="member-avatar">${member.avatar}</div>
+            <div class="member-details">
+                <span class="member-name">${member.name}</span>
+                <span class="member-role">${member.role} — <small>${shortenAddress(member.address)}</small></span>
+            </div>
+        `;
+        membersList.appendChild(div);
+    });
+
+    // Render quy tắc
+    const rulesList = document.getElementById('budget-rules-list');
+    rulesList.innerHTML = '';
+    budget.rules.forEach(rule => {
+        const div = document.createElement('div');
+        div.className = 'rule-item';
+        div.innerHTML = `
+            <span class="rule-name">${rule.name}</span>
+            <span class="rule-desc">${rule.desc}</span>
+        `;
+        rulesList.appendChild(div);
+    });
+
+    // Render giao dịch
+    const historyList = document.getElementById('budget-history-list');
+    if (budget.transactions.length === 0) {
+        historyList.innerHTML = '<div class="empty-state"><p>Chưa có giao dịch nào</p></div>';
+    } else {
+        historyList.innerHTML = '';
+        budget.transactions.forEach(tx => {
+            const div = document.createElement('div');
+            div.className = 'transaction-item';
+            div.innerHTML = `
+                <div class="tx-info">
+                    <span class="tx-title">${tx.title}</span>
+                    <span class="tx-date">${new Date(tx.date).toLocaleDateString('vi-VN')}</span>
+                </div>
+                <div class="tx-amount ${tx.type}">
+                    ${tx.amount > 0 ? '+' : ''}${tx.amount.toFixed(2)} ETH
+                </div>
+            `;
+            historyList.appendChild(div);
+        });
+    }
 }
 
 function animateNumber(id, start, end, duration) {
@@ -457,6 +644,9 @@ function showSuccessState(member, isExisting = false) {
 function resetForm() {
     // Xóa dữ liệu form
     document.getElementById('member-form').reset();
+
+    const container = document.querySelector('.container');
+    container.classList.remove('wide');
 
     // Hiển thị chỉ báo bước
     document.querySelector('.steps').style.display = 'flex';
@@ -560,5 +750,284 @@ function toggleBalanceVisibility() {
             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
             <circle cx="12" cy="12" r="3"></circle>
         `;
+    }
+}
+
+function goToBudgetManagement() {
+    showLoading('Đang tải trung tâm quản lý quỹ...');
+    setTimeout(() => {
+        renderBudgetManagement();
+        goToStep('budget-management');
+        hideLoading();
+    }, 500);
+}
+
+async function renderBudgetManagement() {
+    const gridEl = document.getElementById('budget-feature-grid');
+    if (!gridEl) return;
+
+    // Lấy dữ liệu thật từ API
+    const budgetList = await fetchBudgets();
+
+    // Cập nhật thống kê
+    document.getElementById('total-budgets-count').textContent = budgetList.length;
+    const totalAmount = budgetList.reduce((sum, b) => sum + b.balance, 0);
+    document.getElementById('total-budgeted-amount').textContent = totalAmount.toFixed(2);
+    document.getElementById('most-active-budget').textContent = budgetList[0]?.name || '--';
+
+    // Render lưới thẻ quỹ
+    gridEl.innerHTML = '';
+    if (budgetList.length === 0) {
+        gridEl.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><p>Bạn chưa tham gia quỹ nào. Hãy tạo quỹ mới!</p></div>';
+        return;
+    }
+
+    budgetList.forEach(budget => {
+        const card = document.createElement('div');
+        card.className = 'dash-card budget-feature-card';
+        card.onclick = () => openBudgetDashboard(budget.id);
+        
+        card.innerHTML = `
+            <div class="budget-card-top">
+                <div class="budget-card-title">${budget.name}</div>
+                <div class="type-badge">${budget.type}</div>
+            </div>
+            <div class="budget-card-balance">
+                <span class="amount">${budget.balance.toFixed(2)}</span>
+                <span class="currency">ETH</span>
+            </div>
+            <div class="budget-card-footer">
+                <span class="members-count">${budget.members.length} thành viên</span>
+                <div class="members-avatars">
+                    ${budget.members.slice(0, 3).map(m => `<div class="mini-avatar">${m.avatar}</div>`).join('')}
+                    ${budget.members.length > 3 ? `<div class="mini-avatar more">+${budget.members.length - 3}</div>` : ''}
+                </div>
+            </div>
+        `;
+        gridEl.appendChild(card);
+    });
+}
+async function fetchBudgets() {
+    if (!connectedAddress) return [];
+    try {
+        const response = await fetch(`${API_BASE_URL}/budgets/?address=${connectedAddress}`);
+        if (response.ok) {
+            return await response.json();
+        }
+        return [];
+    } catch (err) {
+        console.error('Fetch Budgets Error:', err);
+        return [];
+    }
+}
+
+function openCreateBudgetModal() {
+    document.getElementById('create-budget-modal').classList.remove('hidden');
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.add('hidden');
+}
+
+async function handleCreateBudget(event) {
+    event.preventDefault();
+    const name = document.getElementById('budget-name').value;
+    const description = document.getElementById('budget-description').value;
+    let type = document.getElementById('create-budget-type').value;
+
+    // Nếu chọn "Khác", lấy giá trị từ ô nhập liệu tự chọn
+    if (type === 'Khác') {
+        const otherType = document.getElementById('budget-type-other').value.trim();
+        if (otherType) {
+            type = otherType;
+        }
+    }
+
+    const budgetData = {
+        name,
+        description,
+        type,
+        members: [
+            { 
+                name: 'Bạn (Quản trị)', 
+                address: connectedAddress, 
+                role: 'Quản trị', 
+                avatar: 'Me' 
+            }
+        ],
+        rules: [],
+        transactions: []
+    };
+
+    const result = await createBudget(budgetData);
+    if (result) {
+        closeModal('create-budget-modal');
+        document.getElementById('create-budget-form').reset();
+        document.getElementById('budget-type-other-container').classList.add('hidden');
+        // Cập nhật lại danh sách quỹ nếu đang ở trang quản lý
+        if (currentStep === 'budget-management') {
+            renderBudgetManagement();
+        }
+    }
+}
+
+async function createBudget(budgetData) {
+    if (!connectedAddress) {
+        showToast('error', 'Vui lòng kết nối ví trước!');
+        return;
+    }
+
+    showLoading('Đang tạo quỹ mới...');
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/budgets/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                ...budgetData,
+                creator_address: connectedAddress
+            }),
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+            console.error('Validation Error Details:', result.detail);
+            const errorMsg = typeof result.detail === 'string' ? result.detail : JSON.stringify(result.detail);
+            throw new Error(errorMsg || 'Lỗi từ server');
+        }
+
+        hideLoading();
+        showToast('success', 'Tạo quỹ thành công!');
+        return result;
+    } catch (error) {
+        hideLoading();
+        showToast('error', 'Lỗi khi tạo quỹ: ' + error.message);
+        console.error('Create Budget Error:', error);
+    }
+}
+
+function openAddMemberModal() {
+    document.getElementById('add-member-modal').classList.remove('hidden');
+}
+
+async function handleAddMember(event) {
+    event.preventDefault();
+    const name = document.getElementById('new-member-name').value;
+    const address = document.getElementById('new-member-address').value.trim();
+    const role = document.getElementById('new-member-role').value;
+    const avatar = name.charAt(0).toUpperCase();
+
+    // Kiểm tra địa chỉ ví hợp lệ cơ bản
+    if (!address.startsWith('0x') || address.length !== 42) {
+        showToast('error', 'Địa chỉ ví không hợp lệ!');
+        return;
+    }
+
+    const memberData = { name, address, role, avatar };
+
+    showLoading('Đang thêm thành viên...');
+    try {
+        const response = await fetch(`${API_BASE_URL}/budgets/${currentBudgetId}/members`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(memberData)
+        });
+
+        if (response.ok) {
+            const updatedBudget = await response.json();
+            closeModal('add-member-modal');
+            document.getElementById('add-member-form').reset();
+            showToast('success', 'Đã thêm thành viên thành công!');
+            renderBudgetDashboard(updatedBudget);
+        } else {
+            const err = await response.json();
+            throw new Error(err.detail || 'Lỗi từ server');
+        }
+    } catch (error) {
+        showToast('error', error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+function openJoinBudgetModal() {
+    document.getElementById('join-budget-modal').classList.remove('hidden');
+}
+
+async function handleJoinBudget(event) {
+    event.preventDefault();
+    const budgetId = document.getElementById('join-budget-id').value.trim();
+    
+    if (!budgetId) {
+        showToast('error', 'Vui lòng nhập mã ID của quỹ!');
+        return;
+    }
+
+    if (!connectedAddress) {
+        showToast('error', 'Vui lòng kết nối ví MetaMask!');
+        return;
+    }
+
+    showLoading('Đang gửi yêu cầu tham gia...');
+    
+    try {
+        // Lấy thông tin thành viên hiện tại để tham gia
+        // Nếu người dùng chưa có profile, ta lấy tên mặc định từ ví
+        let memberName = 'Thành viên mới';
+        try {
+            const memberResponse = await fetch(`${API_BASE_URL}/members/?address=${connectedAddress}`);
+            if (memberResponse.ok) {
+                const memberData = await memberResponse.json();
+                memberName = memberData.name;
+            }
+        } catch (e) {
+            console.log('Using default name as member profile not found');
+        }
+
+        const memberData = {
+            name: memberName,
+            address: connectedAddress,
+            role: 'Thành viên',
+            avatar: memberName.charAt(0).toUpperCase()
+        };
+
+        const response = await fetch(`${API_BASE_URL}/budgets/${budgetId}/members`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(memberData)
+        });
+
+        if (response.ok) {
+            showToast('success', 'Bạn đã tham gia quỹ thành công!');
+            closeModal('join-budget-modal');
+            document.getElementById('join-budget-form').reset();
+            
+            // Cập nhật lại danh sách quỹ
+            if (currentStep === 'budget-management') {
+                renderBudgetManagement();
+            } else {
+                renderBudgets();
+            }
+        } else {
+            const err = await response.json();
+            throw new Error(err.detail || 'Không tìm thấy quỹ với ID này hoặc bạn đã là thành viên.');
+        }
+    } catch (error) {
+        showToast('error', error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+function copyBudgetId() {
+    const budgetId = document.getElementById('budget-id-display').textContent;
+    if (budgetId && budgetId !== '---') {
+        navigator.clipboard.writeText(budgetId).then(() => {
+            showToast('success', 'Đã sao chép mã ID quỹ!');
+        }).catch(err => {
+            showToast('error', 'Không thể sao chép mã ID');
+        });
     }
 }
