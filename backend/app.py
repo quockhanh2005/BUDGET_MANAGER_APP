@@ -9,6 +9,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from backend import config
 
 from backend.api.member import router as member_router
+from backend.api.budget import router as budget_router
 
 app = FastAPI(title="Budget Manager API")
 
@@ -23,6 +24,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(member_router)
+app.include_router(budget_router)
 
 @app.on_event("shutdown")
 def shutdown_event():
