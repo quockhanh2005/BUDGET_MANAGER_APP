@@ -26,6 +26,50 @@ class BudgetService:
             return budget_data
         return None
 
+    def add_member_by_address(self, budget_id: str, address: str, role: str):
+        """
+        Tìm thông tin người dùng từ collection 'member' và thêm vào budget.
+        """
+        address = address.lower()
+        
+        # 1. Tìm thông tin người dùng từ DB "member"
+        member_db = db_instance.get_db("member")
+        member_collection = member_db["user"]
+        user = member_collection.find_one({"member_address": address})
+        
+        if not user:
+            return None, "Người dùng chưa đăng ký hệ thống"
+
+        name = user.get("name", "Người dùng")
+        avatar = name[0].upper() if name else "U"
+
+        member_data = {
+            "name": name,
+            "address": address,
+            "role": role,
+            "avatar": avatar
+        }
+        
+        # 2. Kiểm tra nếu thành viên đã có trong quỹ rồi
+        existing = self.collection.find_one({
+            "id": budget_id,
+            "members.address": address
+        })
+        if existing:
+            if "_id" in existing: del existing["_id"]
+            return existing, "Thành viên đã có trong quỹ"
+            
+        result = self.collection.update_one(
+            {"id": budget_id},
+            {"$push": {"members": member_data}}
+        )
+        
+        if result.modified_count > 0:
+            budget = self.collection.find_one({"id": budget_id}, {"_id": 0})
+            return budget, "Thành công"
+            
+        return None, "Không thể cập nhật quỹ"
+
     def get_budgets(self, creator_address: str = None):
         query = {}
         if creator_address:
@@ -39,7 +83,7 @@ class BudgetService:
         cursor = self.collection.find(query, {"_id": 0}).sort("created_at", -1)
         return list(cursor)
 
-    def add_member(self, budget_id: str, member_data: dict):
+    def join_budget_by_address(self, budget_id: str, member_data: dict):
         if "address" in member_data:
             member_data["address"] = member_data["address"].lower()
         
@@ -60,4 +104,24 @@ class BudgetService:
         if result.modified_count > 0:
             budget = self.collection.find_one({"id": budget_id}, {"_id": 0})
             return budget
+        return None
+
+    def delete_budget(self, budget_id: str):
+        """
+        Xóa vĩnh viễn một quỹ khỏi hệ thống.
+        """
+        result = self.collection.delete_one({"id": budget_id})
+        return result.deleted_count > 0
+
+    def remove_member(self, budget_id: str, address: str):
+        """
+        Xóa một thành viên khỏi quỹ dựa trên địa chỉ ví.
+        """
+        address = address.lower()
+        result = self.collection.update_one(
+            {"id": budget_id},
+            {"$pull": {"members": {"address": address}}}
+        )
+        if result.modified_count > 0:
+            return self.collection.find_one({"id": budget_id}, {"_id": 0})
         return None

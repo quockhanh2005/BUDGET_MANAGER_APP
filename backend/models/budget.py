@@ -3,6 +3,7 @@ from typing import List, Optional
 from datetime import datetime
 
 class BudgetMember(BaseModel):
+    budget_id: Optional[str] = None
     name: str
     address: Optional[str] = ""
     role: str
@@ -26,6 +27,10 @@ class BudgetRequest(BaseModel):
     members: List[BudgetMember] = []
     rules: List[BudgetRule] = []
     transactions: List[BudgetTransaction] = []
+
+class AddMemberRequest(BaseModel):
+    address: str
+    role: str
 
 class BudgetResponse(BudgetRequest):
     id: str
