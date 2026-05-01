@@ -33,6 +33,7 @@ Cần chạy đồng thời cả Backend và Frontend để ứng dụng hoạt 
 Đảm bảo bạn đang ở thư mục gốc của dự án (`BUDGET_MANAGER_APP`).
 
 **Bước 1: Kích hoạt môi trường ảo**
+
 - Trên Linux/macOS:
   ```bash
   source .venv/bin/activate
@@ -43,18 +44,23 @@ Cần chạy đồng thời cả Backend và Frontend để ứng dụng hoạt 
   ```
 
 **Bước 2: Cài đặt dependencies (nếu chưa có)**
+
 ```bash
 pip install -r requirements.txt
 ```
 
 **Bước 3: Khởi chạy Server**
+
 ```bash
 python3 -m backend.app
 ```
+
 Hoặc sử dụng uvicorn trực tiếp:
+
 ```bash
 uvicorn backend.app:app --reload --port 8000
 ```
+
 Backend sẽ chạy tại: `http://localhost:8000`
 
 ---
@@ -65,12 +71,15 @@ Vì frontend là các tệp tĩnh (static files), bạn có thể chạy bằng 
 
 **Cách 1: Sử dụng Python (Đơn giản nhất)**
 Mở một terminal mới tại thư mục gốc và chạy:
+
 ```bash
 python3 -m http.server -d frontend 5500
 ```
+
 Frontend sẽ chạy tại: `http://localhost:5500`
 
 **Cách 2: Sử dụng Live Server (VS Code)**
+
 - Mở thư mục `frontend` trong VS Code.
 - Click chuột phải vào `index.html` và chọn **Open with Live Server**.
 
@@ -83,5 +92,6 @@ Frontend sẽ chạy tại: `http://localhost:5500`
 - **Cấu hình**: Cập nhật các thông số cần thiết trong tệp `.env` ở thư mục gốc và `backend/`.
 
 ## 📝 Lưu ý
+
 - Đảm bảo Backend đã chạy trước khi thao tác trên Frontend để các yêu cầu API không bị lỗi.
 - Kiểm tra cấu hình kết nối MongoDB và Blockchain trong tệp `.env`.
