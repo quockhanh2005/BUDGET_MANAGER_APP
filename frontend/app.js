@@ -12,6 +12,7 @@ let currentStep = 1;
 let connectedAddress = null;
 let connectedChainId = null;
 let currentBudgetId = null;
+let currentMemberProfile = null;
 
 // ========== Mock Data cho Budget ==========
 const MOCK_BUDGETS = [];
@@ -43,7 +44,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Thêm listener cho loại quỹ "Khác"
     const budgetTypeSelect = document.getElementById('create-budget-type');
     const budgetTypeOtherContainer = document.getElementById('budget-type-other-container');
-    
+
     if (budgetTypeSelect && budgetTypeOtherContainer) {
         budgetTypeSelect.addEventListener('change', (e) => {
             console.log('Budget type changed to:', e.target.value);
@@ -52,6 +53,36 @@ document.addEventListener('DOMContentLoaded', async () => {
                 document.getElementById('budget-type-other').focus();
             } else {
                 budgetTypeOtherContainer.classList.add('hidden');
+            }
+        });
+    }
+
+    // Thêm listener kiểm tra địa chỉ ví khi nhập (cho Modal Thêm thành viên)
+    const newMemberAddressInput = document.getElementById('new-member-address');
+    if (newMemberAddressInput) {
+        newMemberAddressInput.addEventListener('input', async (e) => {
+            const address = e.target.value.trim();
+            const statusEl = document.getElementById('address-check-status');
+            if (!statusEl) return;
+
+            if (address.length === 42 && address.startsWith('0x')) {
+                statusEl.textContent = '🔍 Đang kiểm tra người dùng...';
+                statusEl.style.color = 'var(--text-secondary)';
+                try {
+                    const response = await fetch(`${API_BASE_URL}/members/?address=${address}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        statusEl.textContent = `Tìm thấy: ${data.name}`;
+                        statusEl.style.color = '#10b981';
+                    } else {
+                        statusEl.textContent = 'Người dùng chưa đăng ký hệ thống';
+                        statusEl.style.color = '#f59e0b';
+                    }
+                } catch (err) {
+                    statusEl.textContent = '';
+                }
+            } else {
+                statusEl.textContent = '';
             }
         });
     }
@@ -198,7 +229,7 @@ function listenForAccountChanges() {
 function goToStep(step) {
     console.log('Going to step:', step);
     const container = document.querySelector('.container');
-    
+
     // Nếu là dashboard hoặc budget-dashboard hoặc budget-management, ẩn toàn bộ thanh tiến trình và mở rộng khung
     if (step === 'dashboard' || step === 'budget-dashboard' || step === 'budget-management') {
         container.classList.add('wide');
@@ -208,7 +239,7 @@ function goToStep(step) {
         if (step === 'dashboard') targetId = 'step-dashboard';
         else if (step === 'budget-dashboard') targetId = 'step-budget-dashboard';
         else targetId = 'step-budget-management';
-        
+
         document.getElementById(targetId).classList.add('active');
         currentStep = step;
         return;
@@ -253,7 +284,7 @@ function goToStep(step) {
 
 async function handleContinue() {
     console.log('HandleContinue triggered for address:', connectedAddress);
-    
+
     if (!connectedAddress) {
         showToast('error', 'Vui lòng kết nối ví trước!');
         return;
@@ -268,9 +299,10 @@ async function handleContinue() {
 
         const response = await fetch(url, { cache: 'no-store' });
         console.log('Response Status:', response.status);
-        
+
         if (response.ok) {
             const member = await response.json();
+            currentMemberProfile = member; // Lưu profile người dùng hiện tại
             console.log('Member data received:', member);
             hideLoading();
             renderDashboard(member);
@@ -426,7 +458,7 @@ async function signAndSubmit() {
 
 async function renderDashboard(member) {
     console.log('Rendering dashboard for:', member.name);
-    
+
     const container = document.querySelector('.container');
     container.classList.add('wide');
 
@@ -438,7 +470,7 @@ async function renderDashboard(member) {
     document.getElementById('dashboard-member-id').textContent = member.member_id;
     document.getElementById('dashboard-email').textContent = member.email || 'N/A';
     document.getElementById('dashboard-address').textContent = member.member_address;
-    
+
     // Định dạng ngày tham gia
     const joinDate = member.created_at ? new Date(member.created_at).toLocaleDateString('vi-VN') : new Date().toLocaleDateString('vi-VN');
     document.getElementById('dashboard-created-at').textContent = joinDate;
@@ -451,10 +483,10 @@ async function renderDashboard(member) {
                 params: [connectedAddress, 'latest']
             });
             const balanceEth = (parseInt(balanceWei, 16) / 1e18);
-            
+
             // Hiệu ứng số nhảy cho balance
             animateNumber('dashboard-balance', 0, balanceEth, 1000);
-            
+
             // Cập nhật trạng thái mạng
             const chainId = await window.ethereum.request({ method: 'eth_chainId' });
             const networkName = chainId === '0x1' ? 'Mainnet' : chainId === '0xaa36a7' ? 'Sepolia' : 'Testnet';
@@ -517,7 +549,7 @@ async function renderBudgets() {
         const item = document.createElement('div');
         item.className = 'budget-item';
         item.onclick = () => openBudgetDashboard(budget.id);
-        
+
         item.innerHTML = `
             <div class="budget-info">
                 <span class="budget-name">${budget.name}</span>
@@ -535,11 +567,11 @@ async function renderBudgets() {
 async function openBudgetDashboard(budgetId) {
     currentBudgetId = budgetId;
     showLoading('Đang tải dữ liệu quỹ...');
-    
+
     try {
         const budgetList = await fetchBudgets();
         const budget = budgetList.find(b => b.id === budgetId);
-        
+
         if (!budget) {
             hideLoading();
             showToast('error', 'Không tìm thấy thông tin quỹ');
@@ -563,7 +595,7 @@ function renderBudgetDashboard(budget) {
     document.getElementById('budget-description').textContent = budget.description;
     document.getElementById('budget-status').textContent = 'Hoạt động';
     document.getElementById('budget-type').textContent = budget.type;
-    
+
     // Hiệu ứng số nhảy cho balance
     animateNumber('budget-balance', 0, budget.balance, 800);
 
@@ -574,12 +606,21 @@ function renderBudgetDashboard(budget) {
     budget.members.forEach(member => {
         const div = document.createElement('div');
         div.className = 'member-item';
+        
+        // Luôn hiển thị tên thật, nếu là chính mình thì có thể thêm chú thích (Quản trị) nếu đúng role
+        const isMe = member.address.toLowerCase() === connectedAddress.toLowerCase();
+        const displayName = isMe ? (currentMemberProfile ? currentMemberProfile.name : member.name) : member.name;
+        
         div.innerHTML = `
             <div class="member-avatar">${member.avatar}</div>
             <div class="member-details">
-                <span class="member-name">${member.name}</span>
+                <span class="member-name">${displayName} ${isMe ? '<small>(Bạn)</small>' : ''}</span>
                 <span class="member-role">${member.role} — <small>${shortenAddress(member.address)}</small></span>
             </div>
+            ${!isMe ? `
+            <button class="btn-remove-member" onclick="handleRemoveMember('${member.address}')" title="Xóa khỏi quỹ" style="background: none; border: none; color: #ff4d4d; opacity: 0.5; cursor: pointer; padding: 5px; transition: 0.3s;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>` : ''}
         `;
         membersList.appendChild(div);
     });
@@ -635,6 +676,7 @@ function animateNumber(id, start, end, duration) {
 }
 
 function showSuccessState(member, isExisting = false) {
+    currentMemberProfile = member;
     renderDashboard(member);
 }
 
@@ -785,12 +827,16 @@ async function renderBudgetManagement() {
     budgetList.forEach(budget => {
         const card = document.createElement('div');
         card.className = 'dash-card budget-feature-card';
+        card.style.position = 'relative';
         card.onclick = () => openBudgetDashboard(budget.id);
-        
+
         card.innerHTML = `
+            <button class="btn-delete-budget" onclick="event.stopPropagation(); handleDeleteBudgetById('${budget.id}')" title="Xóa quỹ" style="position: absolute; top: 10px; right: 10px; background: rgba(255,77,77,0.1); border: none; color: #ff4d4d; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; z-index: 5;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
             <div class="budget-card-top">
                 <div class="budget-card-title">${budget.name}</div>
-                <div class="type-badge">${budget.type}</div>
+                <div class="type-badge" style="margin-right: 30px;">${budget.type}</div>
             </div>
             <div class="budget-card-balance">
                 <span class="amount">${budget.balance.toFixed(2)}</span>
@@ -848,11 +894,11 @@ async function handleCreateBudget(event) {
         description,
         type,
         members: [
-            { 
-                name: 'Bạn (Quản trị)', 
-                address: connectedAddress, 
-                role: 'Quản trị', 
-                avatar: 'Me' 
+            {
+                name: currentMemberProfile ? currentMemberProfile.name : 'Quản trị viên',
+                address: connectedAddress,
+                role: 'Quản trị',
+                avatar: currentMemberProfile ? currentMemberProfile.name.charAt(0).toUpperCase() : 'A'
             }
         ],
         rules: [],
@@ -878,7 +924,7 @@ async function createBudget(budgetData) {
     }
 
     showLoading('Đang tạo quỹ mới...');
-    
+
     try {
         const response = await fetch(`${API_BASE_URL}/budgets/`, {
             method: 'POST',
@@ -914,10 +960,8 @@ function openAddMemberModal() {
 
 async function handleAddMember(event) {
     event.preventDefault();
-    const name = document.getElementById('new-member-name').value;
     const address = document.getElementById('new-member-address').value.trim();
     const role = document.getElementById('new-member-role').value;
-    const avatar = name.charAt(0).toUpperCase();
 
     // Kiểm tra địa chỉ ví hợp lệ cơ bản
     if (!address.startsWith('0x') || address.length !== 42) {
@@ -925,21 +969,23 @@ async function handleAddMember(event) {
         return;
     }
 
-    const memberData = { name, address, role, avatar };
-
     showLoading('Đang thêm thành viên...');
+    
     try {
-        const response = await fetch(`${API_BASE_URL}/budgets/${currentBudgetId}/members`, {
+        const response = await fetch(`${API_BASE_URL}/budgets/${currentBudgetId}/add-member-by-address`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(memberData)
+            body: JSON.stringify({ address, role })
         });
 
         if (response.ok) {
             const updatedBudget = await response.json();
             closeModal('add-member-modal');
             document.getElementById('add-member-form').reset();
-            showToast('success', 'Đã thêm thành viên thành công!');
+            const statusEl = document.getElementById('address-check-status');
+            if (statusEl) statusEl.textContent = '';
+
+            showToast('success', `Đã thêm thành viên vào quỹ thành công!`);
             renderBudgetDashboard(updatedBudget);
         } else {
             const err = await response.json();
@@ -959,7 +1005,7 @@ function openJoinBudgetModal() {
 async function handleJoinBudget(event) {
     event.preventDefault();
     const budgetId = document.getElementById('join-budget-id').value.trim();
-    
+
     if (!budgetId) {
         showToast('error', 'Vui lòng nhập mã ID của quỹ!');
         return;
@@ -971,7 +1017,7 @@ async function handleJoinBudget(event) {
     }
 
     showLoading('Đang gửi yêu cầu tham gia...');
-    
+
     try {
         // Lấy thông tin thành viên hiện tại để tham gia
         // Nếu người dùng chưa có profile, ta lấy tên mặc định từ ví
@@ -1003,7 +1049,7 @@ async function handleJoinBudget(event) {
             showToast('success', 'Bạn đã tham gia quỹ thành công!');
             closeModal('join-budget-modal');
             document.getElementById('join-budget-form').reset();
-            
+
             // Cập nhật lại danh sách quỹ
             if (currentStep === 'budget-management') {
                 renderBudgetManagement();
@@ -1029,5 +1075,85 @@ function copyBudgetId() {
         }).catch(err => {
             showToast('error', 'Không thể sao chép mã ID');
         });
+    }
+}
+
+async function handleDeleteBudget() {
+    if (!currentBudgetId) return;
+
+    const confirmed = confirm('Bạn có chắc chắn muốn xóa quỹ này không? Hành động này không thể hoàn tác.');
+    if (!confirmed) return;
+
+    showLoading('Đang xóa quỹ...');
+    try {
+        const response = await fetch(`${API_BASE_URL}/budgets/${currentBudgetId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showToast('success', 'Đã xóa quỹ thành công!');
+            currentBudgetId = null;
+            goToBudgetManagement();
+        } else {
+            const err = await response.json();
+            throw new Error(err.detail || 'Không thể xóa quỹ');
+        }
+    } catch (error) {
+        showToast('error', error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+async function handleDeleteBudgetById(budgetId) {
+    if (!budgetId) return;
+
+    const confirmed = confirm('Bạn có chắc chắn muốn xóa quỹ này không?');
+    if (!confirmed) return;
+
+    showLoading('Đang xóa quỹ...');
+    try {
+        const response = await fetch(`${API_BASE_URL}/budgets/${budgetId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showToast('success', 'Đã xóa quỹ thành công!');
+            renderBudgetManagement();
+        } else {
+            const err = await response.json();
+            throw new Error(err.detail || 'Không thể xóa quỹ');
+        }
+    } catch (error) {
+        showToast('error', error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+async function handleRemoveMember(address) {
+    if (!currentBudgetId || !address) return;
+
+    const confirmed = confirm('Bạn có chắc chắn muốn xóa thành viên này khỏi quỹ?');
+    if (!confirmed) return;
+
+    showLoading('Đang xóa thành viên...');
+    try {
+        const response = await fetch(`${API_BASE_URL}/budgets/${currentBudgetId}/members/${address}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            const updatedBudget = await response.json();
+            showToast('success', 'Đã xóa thành viên khỏi quỹ!');
+            renderBudgetDashboard(updatedBudget);
+        } else {
+            const err = await response.json();
+            throw new Error(err.detail || 'Không thể xóa thành viên');
+        }
+    } catch (error) {
+        showToast('error', error.message);
+    } finally {
+        hideLoading();
     }
 }
