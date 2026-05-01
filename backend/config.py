@@ -15,5 +15,7 @@ MONGO_URI = os.getenv("MONGO_URI")
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "budget_manager")
 DATABASE_TYPE = os.getenv("DATABASE_TYPE", "mongodb")
 
-# Other Configurations (Add more as needed)
-# API_SECRET_KEY = os.getenv("API_SECRET_KEY")
+# Blockchain Configurations
+RPC_URL = os.getenv("RPC_URL")
+VAULT_TEMPLATE_ADDRESS = os.getenv("VAULT_TEMPLATE_ADDRESS")
+VAULT_FACTORY_ADDRESS = os.getenv("VAULT_FACTORY_ADDRESS")

@@ -19,6 +19,9 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Virtual Environment
 .venv/
@@ -47,4 +50,21 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Node / Frontend / Blockchain
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Hardhat / Blockchain
+/blockchain/artifacts/
+/blockchain/cache/
+/blockchain/typechain/
+/blockchain/typechain-types/
+/blockchain/coverage/
+/blockchain/coverage.json
+
+# Other
 README_2.md

@@ -24,6 +24,9 @@ class BudgetRequest(BaseModel):
     description: Optional[str] = ""
     type: str = "Khác"
     creator_address: str
+    vault_address: Optional[str] = None
+    tx_hash: Optional[str] = None
+    gas_fee: Optional[float] = 0.0
     members: List[BudgetMember] = []
     rules: List[BudgetRule] = []
     transactions: List[BudgetTransaction] = []

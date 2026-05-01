@@ -6,6 +6,7 @@ class WalletService:
     def __init__(self):
         self.db = db_instance.get_db("wallet")
         self.collection = self.db["wallet"]
+        self.history_collection = self.db["transaction_history"]
 
     def create_wallet(self, member_id: str, wallet_address: str) -> WalletResponse:
         """
@@ -44,5 +45,31 @@ class WalletService:
             wallet_data["id"] = str(wallet_data.pop("_id"))
             return WalletResponse(**wallet_data)
         return None
+
+    def save_transaction(self, tx_data: dict):
+        """
+        Save a new transaction to the history.
+        """
+        tx_data["created_at"] = datetime.utcnow()
+        if "wallet_address" in tx_data:
+            tx_data["wallet_address"] = tx_data["wallet_address"].lower()
+            
+        result = self.history_collection.insert_one(tx_data)
+        return str(result.inserted_id)
+
+    def get_transaction_history(self, wallet_address: str):
+        """
+        Get all transactions for a specific wallet.
+        """
+        wallet_address = wallet_address.lower()
+        cursor = self.history_collection.find({"wallet_address": wallet_address}).sort("created_at", -1)
+        
+        history = []
+        for doc in cursor:
+            doc["id"] = str(doc.pop("_id"))
+            if "created_at" in doc:
+                doc["date"] = doc["created_at"].isoformat()
+            history.append(doc)
+        return history
 
 
