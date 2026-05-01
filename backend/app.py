@@ -12,6 +12,8 @@ from backend.api.member import router as member_router
 from backend.api.budget import router as budget_router
 from backend.api.membership import router as membership_router
 from backend.api.proposal import router as proposal_router
+from backend.api.wallet import router as wallet_router
+
 
 app = FastAPI(title="Budget Manager API")
 
@@ -27,8 +29,12 @@ app.add_middleware(
 # Include routers
 app.include_router(member_router)
 app.include_router(budget_router)
+
 app.include_router(membership_router)
 app.include_router(proposal_router)
+
+app.include_router(wallet_router)
+
 
 @app.on_event("shutdown")
 def shutdown_event():

@@ -14,8 +14,8 @@ MONGO_URI = os.getenv("MONGO_URI")
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "budget_manager")
 DATABASE_TYPE = os.getenv("DATABASE_TYPE", "mongodb")
 
-# Validate
-if not MONGO_URI:
-    raise ValueError("MONGO_URI not found. Check your .env file")
+ # Blockchain Configurations
+RPC_URL = os.getenv("RPC_URL")
+VAULT_TEMPLATE_ADDRESS = os.getenv("VAULT_TEMPLATE_ADDRESS")
+VAULT_FACTORY_ADDRESS = os.getenv("VAULT_FACTORY_ADDRESS")
 
-print("Config loaded")
