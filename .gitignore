@@ -68,3 +68,12 @@ yarn-error.log*
 
 # Other
 README_2.md
+# Node modules (Rất quan trọng cho phần Blockchain)
+node_modules/
+package-lock.json (tùy chọn, thường nên giữ lại để đồng bộ version)
+
+# Hardhat files
+artifacts/
+cache/
+typechain/
+typechain-types/
