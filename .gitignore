@@ -42,13 +42,6 @@ env/
 Thumbs.db
 
 # Blockchain / Node (Hardhat)
-node_modules/
-artifacts/
-cache/
-typechain-types/
-coverage/
-coverage.json
-.openzeppelin/
 
 # Database
 *.db
