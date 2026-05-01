@@ -42,8 +42,6 @@ env/
 Thumbs.db
 
 # Blockchain / Node (Hardhat)
-
-
 # Database
 *.db
 *.sqlite3
