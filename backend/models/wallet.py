@@ -19,3 +19,4 @@ class WalletResponse(WalletBase):
 
     class Config:
         from_attributes = True
+

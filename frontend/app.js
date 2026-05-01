@@ -5,6 +5,12 @@
 
 // ========== Cấu hình ==========
 const API_BASE_URL = 'http://localhost:8000';
+
+// Blockchain Configurations
+// Blockchain Configurations - Đã cập nhật từ .env
+const VAULT_FACTORY_ADDRESS = '0x7E08Ed8DD89a11082065041913Afe0db0304b369';
+const VAULT_TEMPLATE_ADDRESS = '0xA6e8d72FEa7Ae5F97FFB6EFBFc968B3CE7622431';
+const BLOCKCHAIN_NETWORK_ID = '0xaa36a7'; // Sepolia (11155111 in hex)
 const SIGN_MESSAGE_PREFIX = 'Budget Manager - Xác minh danh tính cho địa chỉ ví: ';
 
 // ========== Trạng thái ==========
@@ -13,6 +19,7 @@ let connectedAddress = null;
 let connectedChainId = null;
 let currentBudgetId = null;
 let currentMemberProfile = null;
+let balanceRefreshInterval = null; // Quản lý vòng lặp cập nhật số dư
 
 // ========== Mock Data cho Budget ==========
 const MOCK_BUDGETS = [];
@@ -177,6 +184,9 @@ function updateWalletUI() {
 
     // Cập nhật hiển thị ví trong form
     document.getElementById('wallet-display').value = connectedAddress;
+
+    // Bắt đầu vòng lặp cập nhật số dư liên tục
+    startBalanceAutoRefresh();
 }
 
 function getNetworkName(chainId) {
@@ -222,7 +232,110 @@ function listenForAccountChanges() {
         connectedChainId = chainId;
         document.getElementById('network-name').textContent = getNetworkName(chainId);
         showToast('info', `Đã chuyển mạng: ${getNetworkName(chainId)}`);
+        
+        // Làm mới dữ liệu khi chuyển mạng
+        refreshBalances();
+
+        // Nếu không phải Sepolia, cảnh báo người dùng
+        if (chainId !== BLOCKCHAIN_NETWORK_ID) {
+            showToast('error', 'Cảnh báo: Bạn đã rời khỏi mạng Sepolia!');
+        }
     });
+}
+
+/**
+ * Hàm làm mới toàn bộ số dư hiển thị trên giao diện
+ */
+async function refreshBalances() {
+    if (!connectedAddress) return;
+
+    console.log('--- Refreshing balances ---');
+    
+    // 1. Luôn cập nhật số dư ví cá nhân (nếu đang ở Dashboard chính)
+    const walletBalanceEl = document.getElementById('dashboard-balance');
+    if (walletBalanceEl && (currentStep === 'dashboard' || currentStep === 'budget-management')) {
+        const balanceEth = await getOnChainBalance(connectedAddress);
+        // Cập nhật trực tiếp không cần hiệu ứng nhảy số nếu là update ngầm để tránh rối mắt
+        walletBalanceEl.textContent = parseFloat(balanceEth).toFixed(4);
+    }
+
+    // 2. Cập nhật số dư các quỹ nếu đang ở màn hình Quản lý Quỹ
+    if (currentStep === 'budget-management') {
+        renderBudgetManagement(); 
+    }
+
+    // 3. Cập nhật số dư quỹ cụ thể nếu đang xem chi tiết quỹ
+    if (currentStep === 'budget-dashboard' && currentBudgetId) {
+        const budgetList = await fetchBudgets();
+        const budget = budgetList.find(b => b.id === currentBudgetId);
+        if (budget) {
+            // Lấy số dư thực tế
+            if (budget.vault_address) {
+                const onChainBal = await getOnChainBalance(budget.vault_address);
+                document.getElementById('budget-balance').textContent = parseFloat(onChainBal).toFixed(4);
+            }
+        }
+    }
+}
+
+/**
+ * Khởi động cơ chế tự động làm mới
+ */
+function startBalanceAutoRefresh() {
+    // Xóa interval cũ nếu có
+    if (balanceRefreshInterval) clearInterval(balanceRefreshInterval);
+
+    // Cứ 15 giây cập nhật một lần (Polling)
+    balanceRefreshInterval = setInterval(refreshBalances, 15000);
+
+    // Ngoài ra, lắng nghe sự kiện Block mới từ Ethers (nếu muốn cập nhật nhanh hơn)
+    try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        provider.on('block', (blockNumber) => {
+            console.log('New block mined:', blockNumber);
+            refreshBalances();
+        });
+    } catch (e) {
+        console.warn('Không thể thiết lập Block Listener:', e);
+    }
+}
+
+/**
+ * Đảm bảo người dùng đang ở đúng mạng Sepolia
+ */
+async function ensureSepoliaNetwork() {
+    if (!window.ethereum) return false;
+
+    try {
+        // Yêu cầu chuyển mạng
+        await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: BLOCKCHAIN_NETWORK_ID }],
+        });
+        return true;
+    } catch (switchError) {
+        // Lỗi 4902: Mạng chưa được thêm vào MetaMask
+        if (switchError.code === 4902) {
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [{
+                        chainId: BLOCKCHAIN_NETWORK_ID,
+                        chainName: 'Sepolia Test Network',
+                        nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 },
+                        rpcUrls: ['https://ethereum-sepolia-rpc.publicnode.com'],
+                        blockExplorerUrls: ['https://sepolia.etherscan.io'],
+                    }],
+                });
+                return true;
+            } catch (addError) {
+                showToast('error', 'Không thể thêm mạng Sepolia vào MetaMask.');
+                return false;
+            }
+        }
+        showToast('error', 'Vui lòng chuyển sang mạng Sepolia trong MetaMask.');
+        return false;
+    }
 }
 
 // ========== Điều hướng các bước ==========
@@ -478,18 +591,14 @@ async function renderDashboard(member) {
     // Lấy số dư ví từ MetaMask
     if (typeof window.ethereum !== 'undefined' && connectedAddress) {
         try {
-            const balanceWei = await window.ethereum.request({
-                method: 'eth_getBalance',
-                params: [connectedAddress, 'latest']
-            });
-            const balanceEth = (parseInt(balanceWei, 16) / 1e18);
-
+            const balanceEth = await getOnChainBalance(connectedAddress);
+            
             // Hiệu ứng số nhảy cho balance
-            animateNumber('dashboard-balance', 0, balanceEth, 1000);
+            animateNumber('dashboard-balance', 0, parseFloat(balanceEth), 1000);
 
             // Cập nhật trạng thái mạng
             const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-            const networkName = chainId === '0x1' ? 'Mainnet' : chainId === '0xaa36a7' ? 'Sepolia' : 'Testnet';
+            const networkName = getNetworkName(chainId);
             document.getElementById('dashboard-wallet-status').textContent = `Đang kết nối: ${networkName}`;
         } catch (err) {
             console.error('Error fetching balance:', err);
@@ -506,30 +615,90 @@ async function renderDashboard(member) {
     renderBudgets();
 }
 
-function renderMainTransactions() {
+async function renderMainTransactions() {
     const listEl = document.getElementById('main-transaction-list');
     if (!listEl) return;
 
-    if (MOCK_MAIN_TRANSACTIONS.length === 0) {
+    // Lấy dữ liệu từ backend hoặc từ log tạm thời
+    const transactions = await fetchMainTransactions();
+
+    if (transactions.length === 0) {
         listEl.innerHTML = '<div class="empty-state"><p>Chưa có giao dịch nào</p></div>';
         return;
     }
 
     listEl.innerHTML = '';
-    MOCK_MAIN_TRANSACTIONS.forEach(tx => {
+    transactions.forEach(tx => {
         const div = document.createElement('div');
         div.className = 'transaction-item';
+        
+        // Xác định icon dựa trên loại giao dịch
+        const isExpense = tx.type === 'expense' || tx.amount < 0;
+        
         div.innerHTML = `
             <div class="tx-info">
                 <span class="tx-title">${tx.title}</span>
-                <span class="tx-date">${new Date(tx.date).toLocaleDateString('vi-VN')}</span>
+                <span class="tx-date">${new Date(tx.date).toLocaleString('vi-VN')}</span>
+                ${tx.hash ? `<a href="https://sepolia.etherscan.io/tx/${tx.hash}" target="_blank" class="tx-hash-link">${shortenAddress(tx.hash)}</a>` : ''}
             </div>
-            <div class="tx-amount ${tx.type}">
-                ${tx.amount > 0 ? '+' : ''}${tx.amount.toFixed(2)} ETH
+            <div class="tx-amount-group" style="text-align: right;">
+                <div class="tx-amount ${tx.type}">
+                    ${tx.amount !== 0 ? (tx.amount > 0 ? '+' : '') + tx.amount.toFixed(4) + ' ETH' : 'Smart Contract'}
+                </div>
+                ${tx.gas_fee ? `<div class="tx-gas-fee" style="font-size: 11px; opacity: 0.6;">Gas: ${tx.gas_fee.toFixed(6)} ETH</div>` : ''}
             </div>
         `;
         listEl.appendChild(div);
     });
+}
+
+/**
+ * Lấy lịch sử giao dịch từ hệ thống
+ */
+async function fetchMainTransactions() {
+    if (!connectedAddress) return [];
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/wallet/history?address=${connectedAddress}`);
+        if (response.ok) {
+            return await response.json();
+        }
+    } catch (err) {
+        console.error('Error fetching history from backend:', err);
+    }
+    
+    // Fallback sang localStorage nếu backend lỗi
+    const localLogs = JSON.parse(localStorage.getItem(`tx_logs_${connectedAddress}`) || '[]');
+    return localLogs.sort((a, b) => new Date(b.date) - new Date(a.date));
+}
+
+/**
+ * Hàm ghi log giao dịch mới
+ */
+async function logTransaction(txData) {
+    if (!connectedAddress) return;
+    
+    const fullTxData = {
+        ...txData,
+        wallet_address: connectedAddress
+    };
+
+    // 1. Lưu vào localStorage để hiển thị ngay lập tức (Optimistic UI)
+    const logs = JSON.parse(localStorage.getItem(`tx_logs_${connectedAddress}`) || '[]');
+    logs.push(fullTxData);
+    localStorage.setItem(`tx_logs_${connectedAddress}`, JSON.stringify(logs));
+    renderMainTransactions();
+
+    // 2. Gửi lên Backend để lưu trữ lâu dài
+    try {
+        await fetch(`${API_BASE_URL}/wallet/history`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(fullTxData)
+        });
+    } catch (err) {
+        console.error('Error saving transaction to backend:', err);
+    }
 }
 
 async function renderBudgets() {
@@ -545,10 +714,16 @@ async function renderBudgets() {
     }
 
     listEl.innerHTML = '';
-    budgetList.forEach(budget => {
+    for (const budget of budgetList) {
         const item = document.createElement('div');
         item.className = 'budget-item';
         item.onclick = () => openBudgetDashboard(budget.id);
+
+        // Lấy số dư thực tế từ blockchain nếu có địa chỉ vault
+        let displayBalance = budget.balance;
+        if (budget.vault_address) {
+            displayBalance = await getOnChainBalance(budget.vault_address);
+        }
 
         item.innerHTML = `
             <div class="budget-info">
@@ -556,12 +731,12 @@ async function renderBudgets() {
                 <span class="budget-meta">${budget.type} • ${budget.members.length} thành viên</span>
             </div>
             <div class="budget-item-balance">
-                <span class="budget-item-amount">${budget.balance.toFixed(2)}</span>
+                <span class="budget-item-amount">${parseFloat(displayBalance).toFixed(4)}</span>
                 <span class="budget-item-currency">ETH</span>
             </div>
         `;
         listEl.appendChild(item);
-    });
+    }
 }
 
 async function openBudgetDashboard(budgetId) {
@@ -578,7 +753,7 @@ async function openBudgetDashboard(budgetId) {
             return;
         }
 
-        renderBudgetDashboard(budget);
+        await renderBudgetDashboard(budget);
         goToStep('budget-dashboard');
         hideLoading();
     } catch (err) {
@@ -588,7 +763,7 @@ async function openBudgetDashboard(budgetId) {
     }
 }
 
-function renderBudgetDashboard(budget) {
+async function renderBudgetDashboard(budget) {
     // Cập nhật thông tin cơ bản
     document.getElementById('budget-title').textContent = budget.name;
     document.getElementById('budget-id-display').textContent = budget.id;
@@ -596,8 +771,15 @@ function renderBudgetDashboard(budget) {
     document.getElementById('budget-status').textContent = 'Hoạt động';
     document.getElementById('budget-type').textContent = budget.type;
 
+    // Lấy số dư thực tế từ blockchain nếu có địa chỉ vault
+    let displayBalance = budget.balance;
+    if (budget.vault_address) {
+        const onChainBal = await getOnChainBalance(budget.vault_address);
+        displayBalance = parseFloat(onChainBal);
+    }
+
     // Hiệu ứng số nhảy cho balance
-    animateNumber('budget-balance', 0, budget.balance, 800);
+    animateNumber('budget-balance', 0, displayBalance, 800);
 
     // Render thành viên
     const membersList = document.getElementById('budget-members-list');
@@ -606,16 +788,16 @@ function renderBudgetDashboard(budget) {
     budget.members.forEach(member => {
         const div = document.createElement('div');
         div.className = 'member-item';
-        
+
         // Luôn hiển thị tên thật, nếu là chính mình thì có thể thêm chú thích (Quản trị) nếu đúng role
         const isMe = member.address.toLowerCase() === connectedAddress.toLowerCase();
         const displayName = isMe ? (currentMemberProfile ? currentMemberProfile.name : member.name) : member.name;
-        
+
         div.innerHTML = `
             <div class="member-avatar">${member.avatar}</div>
             <div class="member-details">
                 <span class="member-name">${displayName} ${isMe ? '<small>(Bạn)</small>' : ''}</span>
-                <span class="member-role">${member.role} — <small>${shortenAddress(member.address)}</small></span>
+                <span class="member-role">${member.role === 'owner' ? 'Chủ sở hữu' : member.role} — <small>${shortenAddress(member.address)}</small></span>
             </div>
             ${!isMe ? `
             <button class="btn-remove-member" onclick="handleRemoveMember('${member.address}')" title="Xóa khỏi quỹ" style="background: none; border: none; color: #ff4d4d; opacity: 0.5; cursor: pointer; padding: 5px; transition: 0.3s;">
@@ -824,7 +1006,17 @@ async function renderBudgetManagement() {
         return;
     }
 
-    budgetList.forEach(budget => {
+    let totalOnChainBalance = 0;
+
+    for (const budget of budgetList) {
+        // Lấy số dư thực tế từ blockchain
+        let displayBalance = budget.balance;
+        if (budget.vault_address) {
+            const onChainBal = await getOnChainBalance(budget.vault_address);
+            displayBalance = parseFloat(onChainBal);
+        }
+        totalOnChainBalance += displayBalance;
+
         const card = document.createElement('div');
         card.className = 'dash-card budget-feature-card';
         card.style.position = 'relative';
@@ -839,7 +1031,7 @@ async function renderBudgetManagement() {
                 <div class="type-badge" style="margin-right: 30px;">${budget.type}</div>
             </div>
             <div class="budget-card-balance">
-                <span class="amount">${budget.balance.toFixed(2)}</span>
+                <span class="amount">${displayBalance.toFixed(4)}</span>
                 <span class="currency">ETH</span>
             </div>
             <div class="budget-card-footer">
@@ -851,7 +1043,28 @@ async function renderBudgetManagement() {
             </div>
         `;
         gridEl.appendChild(card);
-    });
+    }
+
+    // Cập nhật lại tổng số tiền dựa trên số dư thực tế đã quét
+    document.getElementById('total-budgeted-amount').textContent = totalOnChainBalance.toFixed(4);
+}
+
+/**
+ * Hàm tiện ích lấy số dư ETH từ Blockchain
+ */
+async function getOnChainBalance(address) {
+    if (!window.ethereum || !address) return "0.00";
+    try {
+        const balanceWei = await window.ethereum.request({
+            method: 'eth_getBalance',
+            params: [address, 'latest']
+        });
+        // Chuyển từ Wei (hex) sang ETH (float)
+        return (parseInt(balanceWei, 16) / 1e18).toString();
+    } catch (e) {
+        console.error("Lỗi khi lấy số dư cho " + address, e);
+        return "0.00";
+    }
 }
 async function fetchBudgets() {
     if (!connectedAddress) return [];
@@ -897,7 +1110,7 @@ async function handleCreateBudget(event) {
             {
                 name: currentMemberProfile ? currentMemberProfile.name : 'Quản trị viên',
                 address: connectedAddress,
-                role: 'Quản trị',
+                role: 'Owner',
                 avatar: currentMemberProfile ? currentMemberProfile.name.charAt(0).toUpperCase() : 'A'
             }
         ],
@@ -923,9 +1136,70 @@ async function createBudget(budgetData) {
         return;
     }
 
-    showLoading('Đang tạo quỹ mới...');
+    showLoading('Đang kiểm tra mạng lưới...');
 
     try {
+        // 0. Đảm bảo đúng mạng Sepolia
+        const isCorrectNetwork = await ensureSepoliaNetwork();
+        if (!isCorrectNetwork) {
+            hideLoading();
+            return;
+        }
+
+        updateLoadingText('Đang khởi tạo giao dịch trên Blockchain...');
+
+        // 1. Khởi tạo Ethers Provider và Signer
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+
+        // 2. Kết nối với Smart Contract Factory
+        const factoryContract = new ethers.Contract(VAULT_FACTORY_ADDRESS, WALLET_FACTORY_ABI, signer);
+
+        // 3. Gọi hàm tạo Vault trên Blockchain
+        // owners: danh sách các địa chỉ sở hữu (mặc định là người tạo)
+        // threshold: số lượng chữ ký cần thiết (mặc định là 1)
+        const owners = [connectedAddress];
+        const threshold = 1;
+
+        updateLoadingText('Đang chờ xác nhận giao dịch từ MetaMask...');
+        const tx = await factoryContract.createVault(owners, threshold);
+        
+        updateLoadingText('Đang chờ mạng lưới xác nhận (có thể mất 15-30s)...');
+        const receipt = await tx.wait();
+
+        // 4. Lấy địa chỉ Vault vừa tạo từ sự kiện (Event VaultCreated)
+        // Trong WALLET_FACTORY_ABI, sự kiện là: event VaultCreated(address indexed vaultAddress, ...)
+        // Chúng ta tìm trong logs của receipt
+        let vaultAddress = null;
+        for (const log of receipt.logs) {
+            try {
+                const parsedLog = factoryContract.interface.parseLog(log);
+                if (parsedLog && parsedLog.name === 'VaultCreated') {
+                    vaultAddress = parsedLog.args.vaultAddress;
+                    break;
+                }
+            } catch (e) {
+                // Log không thuộc contract này, bỏ qua
+            }
+        }
+
+        if (!vaultAddress) {
+            throw new Error('Không tìm thấy địa chỉ Vault trong log giao dịch.');
+        }
+
+        console.log('Smart Vault deployed at:', vaultAddress);
+        updateLoadingText('Lưu thông tin vào hệ thống...');
+
+        // 5. Tính toán phí Gas đã dùng
+        let gasFee = 0;
+        try {
+            const feeWei = receipt.gasUsed * receipt.gasPrice;
+            gasFee = parseFloat(ethers.formatEther(feeWei));
+        } catch (e) {
+            console.error('Error calculating gas fee:', e);
+        }
+
+        // 6. Gửi dữ liệu kèm theo địa chỉ Vault và thông tin Transaction về Backend
         const response = await fetch(`${API_BASE_URL}/budgets/`, {
             method: 'POST',
             headers: {
@@ -933,7 +1207,10 @@ async function createBudget(budgetData) {
             },
             body: JSON.stringify({
                 ...budgetData,
-                creator_address: connectedAddress
+                creator_address: connectedAddress,
+                vault_address: vaultAddress,
+                tx_hash: receipt.hash,
+                gas_fee: gasFee
             }),
         });
 
@@ -945,11 +1222,19 @@ async function createBudget(budgetData) {
         }
 
         hideLoading();
-        showToast('success', 'Tạo quỹ thành công!');
+        showToast('success', 'Tạo quỹ và Smart Vault thành công!');
+
+        // Cập nhật lại lịch sử giao dịch trên UI
+        renderMainTransactions();
+
         return result;
     } catch (error) {
         hideLoading();
-        showToast('error', 'Lỗi khi tạo quỹ: ' + error.message);
+        let errorMsg = error.message;
+        if (error.code === 'ACTION_REJECTED') {
+            errorMsg = 'Bạn đã từ chối giao dịch trên MetaMask.';
+        }
+        showToast('error', 'Lỗi khi tạo quỹ: ' + errorMsg);
         console.error('Create Budget Error:', error);
     }
 }
@@ -970,7 +1255,7 @@ async function handleAddMember(event) {
     }
 
     showLoading('Đang thêm thành viên...');
-    
+
     try {
         const response = await fetch(`${API_BASE_URL}/budgets/${currentBudgetId}/add-member-by-address`, {
             method: 'POST',
@@ -1086,7 +1371,7 @@ async function handleDeleteBudget() {
 
     showLoading('Đang xóa quỹ...');
     try {
-        const response = await fetch(`${API_BASE_URL}/budgets/${currentBudgetId}`, {
+        const response = await fetch(`${API_BASE_URL}/budgets/${currentBudgetId}?address=${connectedAddress}`, {
             method: 'DELETE'
         });
 
@@ -1113,7 +1398,7 @@ async function handleDeleteBudgetById(budgetId) {
 
     showLoading('Đang xóa quỹ...');
     try {
-        const response = await fetch(`${API_BASE_URL}/budgets/${budgetId}`, {
+        const response = await fetch(`${API_BASE_URL}/budgets/${budgetId}?address=${connectedAddress}`, {
             method: 'DELETE'
         });
 

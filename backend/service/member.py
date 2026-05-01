@@ -25,6 +25,7 @@ class MemberService:
             "name": name,
             "age": age,
             "member_address": member_address,
+            "role": "user",
             "email": email,
             "created_at": datetime.utcnow()
         }

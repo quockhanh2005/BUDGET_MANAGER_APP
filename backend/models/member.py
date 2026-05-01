@@ -17,6 +17,7 @@ class MemberResponse(BaseModel):
     name: str
     age: int
     member_address: str
+    role: str = "user"
     email: Optional[str] = None
     wallet: Optional[WalletResponse] = None
     created_at: datetime
