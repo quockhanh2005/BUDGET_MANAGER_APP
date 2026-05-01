@@ -1,53 +1,81 @@
-# Budget Manager App - Tài liệu dự án (Luan)
+# Budget Manager App - Tài liệu dự án
 
 Dự án này là một hệ thống quản lý ngân sách nhóm tích hợp công nghệ Blockchain, cho phép người dùng quản lý tài chính một cách minh bạch và bảo mật thông qua ví điện tử (MetaMask).
+
+---
 
 ## 1. Tổng quan dự án
 Ứng dụng giúp các nhóm (gia đình, bạn bè, tổ chức) có thể:
 - Đăng ký thành viên dựa trên địa chỉ ví Blockchain.
 - Tạo các quỹ chung (Budgets) với mục đích cụ thể.
-- Theo dõi số dư và lịch sử giao dịch trực tiếp từ mạng lưới Ethereum.
-- Thực hiện cơ chế phê duyệt đa bên (Multi-sig) thông qua các Proposal.
-
-## 2. Công nghệ sử dụng
-- **Backend**: FastAPI (Python), MongoDB.
-- **Frontend**: HTML5, Vanilla CSS, JavaScript, MetaMask.
-- **Blockchain Interface**: Web3.py / Ethers.js.
-
-## 3. Kiến trúc phân tách Member & Membership (Đặc biệt)
-Dự án được thiết kế tách biệt giữa thông tin cá nhân và quan hệ nhóm để đảm bảo tính bảo mật và dễ mở rộng:
-
-- **Member (`member.py`)**: Quản lý **Hồ sơ cá nhân** (Tên thật, CCCD, Tuổi). Đây là dữ liệu dùng chung toàn hệ thống.
-- **Membership (`membership.py`)**: Quản lý **Quan hệ hội viên** trong từng Quỹ. File này xử lý các nghiệp vụ thêm/xóa thành viên và xem danh sách quỹ tham gia.
-
-### Cơ chế đồng bộ hóa dữ liệu:
-Mặc dù tách rời, nhưng hai phần này được đồng bộ chặt chẽ:
-1. **Tra cứu Tên thật**: Khi xem chi tiết quỹ, hệ thống tự động tìm trong bảng Member để lấy tên thật hiển thị thay vì chỉ hiện địa chỉ ví.
-2. **Kiểm tra đăng ký**: Không thể thêm một ví vào Quỹ nếu ví đó chưa đăng ký thông tin Member (chống người lạ trà trộn).
-
-## 4. Danh sách Use Cases (Nghiệp vụ hệ thống)
-
-### Nhóm 1: Quản lý thông tin và thành viên
-- **UC-MEMBER-01 (Xem danh sách quỹ)**: Xem tất cả các quỹ mà mình đang tham gia.
-- **UC-MEMBER-02 (Xem chi tiết quỹ)**: Xem thông tin chi tiết: người tạo, danh sách thành viên (có tên thật), ngưỡng duyệt, số dư.
-- **UC-MEMBER-06 (Tạo proposal thêm thành viên)**: Đề xuất thêm thành viên mới (Yêu cầu người đó phải có tài khoản Member).
-- **UC-MEMBER-07 (Tạo proposal xóa thành viên)**: Đề xuất loại bỏ thành viên khỏi quỹ.
-
-### Nhóm 2: Giao dịch và Tài chính (Đang phát triển)
-- **UC-MEMBER-03 (Nạp tiền vào quỹ)**: Chuyển tiền và đồng bộ số dư.
-- **UC-MEMBER-04 (Tạo yêu cầu rút tiền)**: Tạo proposal chi tiêu tiền từ quỹ.
-- **UC-MEMBER-05 (Ký xác thực proposal)**: Ký duyệt yêu cầu.
-
-## 5. Danh sách các file Backend mới (Nhóm 1)
-- `backend/models/membership.py`: Cấu trúc dữ liệu Member & Proposal.
-- `backend/service/membership.py`: Logic đồng bộ và xử lý nghiệp vụ.
-- `backend/api/membership.py`: Các endpoint API cho Frontend.
-
-## 6. Hướng dẫn cài đặt và chạy dự án
-1. Kích hoạt venv: `.\venv\Scripts\activate`
-2. Cài đặt thư viện: `pip install -r requirements.txt`
-3. Chạy server: `python -m backend.app`
-4. Mở Frontend: `index.html` qua Live Server (Port 5500).
+- Theo dõi số dư và quản lý quỹ một cách dân chủ.
+- Thực hiện cơ chế phê duyệt đa bên (**Multi-sig**) thông qua các **Proposal**.
 
 ---
-*Tài liệu này được cập nhật để phản ánh kiến trúc đồng bộ giữa Member và Membership.*
+
+## 2. Công nghệ sử dụng
+- **Backend**: FastAPI (Python), MongoDB (NoSQL).
+- **Frontend**: HTML5, Vanilla CSS, JavaScript.
+- **Blockchain**: MetaMask (Provider), Web3.py / Ethers.js (Verify Signature).
+- **Cấu trúc**: 3-Layer Architecture (Router -> Service -> Model).
+
+---
+
+## 3. Kiến trúc hệ thống & Logic bảo mật
+
+### 👤 Member vs Membership (Tách biệt dữ liệu)
+- **Member**: Lưu trữ hồ sơ định danh (Tên, tuổi, email). Một ví chỉ đăng ký Member một lần duy nhất trên toàn hệ thống.
+- **Membership**: Quản lý mối quan hệ giữa Member và Quỹ (Budget). Xử lý việc ai thuộc nhóm nào.
+
+### 🗳️ Cơ chế Proposal (Trái tim của hệ thống)
+Hệ thống không cho phép thay đổi quỹ một cách tùy tiện. Mọi hành động quan trọng đều phải qua 3 bước:
+1. **Tạo Đề xuất (Create):** Một thành viên quỹ đề xuất thêm người hoặc chi tiền.
+2. **Phê duyệt (Approve):** Các thành viên khác vào "ký tên" (Vote). Chỉ thành viên quỹ mới có quyền này.
+3. **Thực thi (Execute):** Khi đủ số lượng chữ ký (ngưỡng Threshold), hệ thống mới chính thức thực hiện thay đổi.
+
+---
+
+## 4. Danh sách Use Cases (Nghiệp vụ)
+
+### Nhóm 1: Định danh & Đăng ký
+- **UC-01 (Register):** Người dùng dùng ví MetaMask ký thông điệp để đăng ký tài khoản.
+- **UC-02 (Login):** Xác thực chủ sở hữu ví để vào Dashboard.
+
+### Nhóm 2: Quản lý Quỹ (Budget)
+- **UC-03 (Create Budget):** Tạo quỹ mới, thiết lập ngưỡng duyệt (ví dụ: cần 2/3 người đồng ý).
+- **UC-04 (View Dashboard):** Xem danh sách các quỹ mình tham gia kèm tên thật của các thành viên khác.
+
+### Nhóm 3: Quản lý Đề xuất (Proposal Management)
+- **UC-05 (Member Proposal):** Đề xuất thêm/xóa thành viên vào quỹ.
+- **UC-06 (Spending Proposal):** Đề xuất rút tiền chi tiêu từ quỹ chung.
+- **UC-07 (Vote/Approve):** Thành viên quỹ bỏ phiếu cho đề xuất.
+- **UC-08 (Finalize/Execute):** Tự động cập nhật dữ liệu khi đề xuất được thông qua.
+
+---
+
+## 5. Hướng dẫn cài đặt & Chạy dự án
+
+### Chuẩn bị:
+1. Cài đặt Python 3.9+.
+2. Có sẵn MongoDB (Local hoặc Atlas).
+3. Cài đặt ví MetaMask trên trình duyệt.
+
+### Cài đặt Backend:
+1. Di chuyển vào thư mục backend: `cd backend`
+2. Cài đặt thư viện: `pip install -r requirements.txt`
+3. Tạo file `.env` và cấu hình:
+   ```env
+   MONGO_URI=mongodb://localhost:27017
+   MONGO_DB_NAME=budget_manager
+   ```
+4. Chạy server: `python app.py`
+
+### Truy cập tài liệu API:
+Mở trình duyệt truy cập: `http://localhost:8000/docs` để test các API thông qua giao diện Swagger UI.
+
+---
+
+## 6. Sơ đồ luồng xử lý (Logic Flow)
+`Yêu cầu từ ví` -> `Xác thực chữ ký` -> `Kiểm tra quyền thành viên` -> `Ghi nhận đề xuất/Duyệt` -> `Cập nhật quỹ`.
+
+**Dự án được thiết kế để đảm bảo: Tiền của nhóm chỉ được chi khi nhóm đồng ý!**
