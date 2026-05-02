@@ -36,6 +36,11 @@ app.include_router(proposal_router)
 app.include_router(wallet_router)
 
 
+@app.on_event("startup")
+async def startup_event():
+    from backend.utils.sync_worker import start_sync_worker
+    start_sync_worker()
+
 @app.on_event("shutdown")
 def shutdown_event():
     from backend.utils.database import db_instance

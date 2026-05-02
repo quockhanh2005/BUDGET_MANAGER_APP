@@ -6,6 +6,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Budget Manager - Đăng ký thành viên với MetaMask" />
   <title>Budget Manager - Đăng Ký Thành Viên</title>
+  <style>
+  .suggestion-tag {
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-secondary);
+  }
+
+  .suggestion-tag:hover {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+</style>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
@@ -413,24 +432,38 @@
                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                   </svg>
                 </div>
+                <div class="vault-address-display" onclick="copyVaultAddress()" title="Địa chỉ Smart Contract của Quỹ" style="font-size: 11px; color: var(--text-secondary); opacity: 0.8; margin-top: 4px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 16V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2z"></path>
+                    <path d="M7 10l3 3 3-3 4 4"></path>
+                  </svg>
+                  Vault: <span id="budget-vault-address">0x...</span>
+                </div>
                 <div class="budget-badges">
                   <span class="status-badge" id="budget-status">Hoạt động</span>
                   <span class="type-badge" id="budget-type">Gia đình</span>
                 </div>
               </div>
             </div>
-            <div class="budget-actions" style="display: flex; gap: 10px;">
-              <button class="btn btn-outline btn-sm" onclick="handleDeleteBudget()" style="border-color: rgba(255, 77, 77, 0.5); color: #ff4d4d; background: rgba(255, 77, 77, 0.05);">
+            <div class="budget-actions" style="display: flex; flex-direction: column; gap: 12px; min-width: 180px;">
+              <div style="display: flex; gap: 10px; width: 100%;">
+                <button class="btn btn-sm" onclick="openDepositModal()" style="flex: 1; background: linear-gradient(135deg, #FFD700 0%, #B8860B 100%); color: #000; font-weight: 700; box-shadow: 0 4px 15px rgba(184, 134, 11, 0.4); border: none;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  Nạp quỹ
+                </button>
+                <button class="btn btn-sm" onclick="handleDeleteBudget()" style="background: rgba(139, 113, 110, 0.2); color: #8B716E; border: 1px solid rgba(139, 113, 110, 0.4); padding: 8px 12px; transition: all 0.3s;" title="Xóa Quỹ">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                  </svg>
+                </button>
+              </div>
+              <button class="btn btn-sm" onclick="openWithdrawModal()" style="width: 100%; background: linear-gradient(135deg, #8B716E 0%, #4A3B39 100%); color: #E6E6E6; border: none; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/>
+                  <path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z" />
                 </svg>
-                Xóa Quỹ
-              </button>
-              <button class="btn btn-primary btn-sm" onclick="showToast('info', 'Tính năng Rút tiền đang phát triển')">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-                Nạp quỹ
+                Rút quỹ
               </button>
             </div>
           </div>
@@ -468,11 +501,43 @@
 
             <!-- CỘT PHẢI: Giao dịch & Quy tắc -->
             <div class="dash-column">
-              <!-- Quy tắc quỹ -->
+              <!-- Yêu cầu rút tiền đang chờ duyệt (Chỉ hiện khi có) -->
+              <div id="pending-withdraw-container" class="pending-section hidden" style="margin-bottom: 24px;">
+                <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                  <h3 style="font-size: 14px; text-transform: uppercase; color: var(--warning); letter-spacing: 0.05em; display: flex; align-items: center; gap: 8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                    Đề xuất đang chờ duyệt (Multi-sig)
+                  </h3>
+                </div>
+                <div id="pending-withdraw-list" style="display: flex; flex-direction: column; gap: 12px;">
+                  <!-- Yêu cầu sẽ được render ở đây -->
+                </div>
+              </div>
+
+              <!-- Quy tắc chi tiêu -->
               <div class="dash-card budget-rules-card">
                 <div class="card-title">Quy tắc chi tiêu</div>
                 <div class="rules-list" id="budget-rules-list">
                   <!-- Rendered via JS -->
+                </div>
+              </div>
+
+              <!-- Gợi ý đề xuất -->
+              <div class="dash-card">
+                <div class="card-title">Gợi ý đề xuất</div>
+                <div class="spending-suggestions-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                  <button class="suggestion-btn" onclick="openWithdrawModal()" style="background: rgba(76, 175, 80, 0.1); color: #4caf50; border: 1px solid #4caf50; padding: 12px; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px;">
+                    💸 Rút quỹ chi tiêu
+                  </button>
+                  <button class="suggestion-btn" onclick="openModal('add-member-modal')" style="background: rgba(33, 150, 243, 0.1); color: #2196f3; border: 1px solid #2196f3; padding: 12px; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px;">
+                    👤+ Thêm thành viên
+                  </button>
+                  <button class="suggestion-btn" onclick="showToast('info', 'Vui lòng nhấn nút X đỏ bên cạnh tên thành viên trong danh sách bên trái để xóa.')" style="background: rgba(244, 67, 54, 0.1); color: #f44336; border: 1px solid #f44336; padding: 12px; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px;">
+                    🚫 Xóa thành viên
+                  </button>
+                  <button class="suggestion-btn" onclick="openChangeThresholdModal()" style="background: rgba(255, 152, 0, 0.1); color: #ff9800; border: 1px solid #ff9800; padding: 12px; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px;">
+                    👥 Đổi ngưỡng duyệt
+                  </button>
                 </div>
               </div>
 
@@ -644,7 +709,17 @@
         <!-- Tên thành viên sẽ được tự động truy vấn từ hệ thống dựa trên địa chỉ ví -->
         <div class="form-group">
           <label for="new-member-address">Địa chỉ ví (Address)</label>
-          <input type="text" id="new-member-address" placeholder="0x..." required />
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="new-member-address" placeholder="0x..." required style="flex: 1;" />
+            <button type="button" class="btn btn-secondary" onclick="openSystemMembersModal()" style="padding: 0 12px; height: 46px; margin-top: 8px;" title="Chọn từ danh sách hệ thống">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+            </button>
+          </div>
           <span id="address-check-status" style="font-size: 12px; margin-top: 4px; display: block;"></span>
         </div>
         <div class="form-group">
@@ -660,6 +735,27 @@
           style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border);">
           <button type="button" class="btn btn-secondary" onclick="closeModal('add-member-modal')">Hủy</button>
           <button type="submit" class="btn btn-primary">Thêm</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Thay đổi Threshold -->
+  <div class="modal hidden" id="change-threshold-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Thay đổi Ngưỡng Phê duyệt</h3>
+        <button class="btn-close" onclick="closeModal('change-threshold-modal')">×</button>
+      </div>
+      <form id="change-threshold-form" onsubmit="handleChangeThreshold(event)">
+        <div class="form-group">
+          <label>Ngưỡng phê duyệt mới</label>
+          <input type="number" id="new-threshold-input" min="1" step="1" required />
+          <span class="form-hint">Số lượng thành viên tối thiểu cần ký để thực thi giao dịch.</span>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('change-threshold-modal')">Hủy</button>
+          <button type="submit" class="btn btn-primary">Tạo đề xuất</button>
         </div>
       </form>
     </div>
@@ -681,6 +777,107 @@
           style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border);">
           <button type="button" class="btn btn-secondary" onclick="closeModal('join-budget-modal')">Hủy</button>
           <button type="submit" class="btn btn-primary">Tham gia ngay</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Danh sách thành viên hệ thống -->
+  <div class="modal hidden" id="system-members-modal">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3>Thành viên hệ thống</h3>
+        <button class="btn-close" onclick="closeModal('system-members-modal')">×</button>
+      </div>
+      <div class="search-box" style="margin-bottom: 15px; padding: 0 4px;">
+        <input type="text" id="member-search-input" placeholder="Tìm kiếm theo tên hoặc địa chỉ ví..." oninput="filterSystemMembers()" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-input); color: var(--text-primary); font-family: inherit;">
+      </div>
+      <div id="system-members-list" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 4px;">
+        <!-- Danh sách thành viên sẽ được render tại đây -->
+        <div class="empty-state"><p>Đang tải danh sách thành viên...</p></div>
+      </div>
+      <div class="modal-footer" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('system-members-modal')">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Nạp Tiền Vào Quỹ -->
+  <div class="modal hidden" id="deposit-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Nạp tiền vào Quỹ</h3>
+        <button class="btn-close" onclick="closeModal('deposit-modal')">×</button>
+      </div>
+      <form id="deposit-form" onsubmit="handleDeposit(event)">
+        <div class="form-group">
+          <label>Số dư ví hiện tại</label>
+          <div style="font-size: 18px; font-weight: 700; color: var(--purple-primary); margin-top: 4px;">
+            <span id="deposit-wallet-balance">0.00</span> ETH
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="deposit-amount">Số lượng nạp (ETH)</label>
+          <input type="number" id="deposit-amount" step="0.0001" min="0.0001" placeholder="0.1" required />
+          <span class="form-hint">Tiền sẽ được chuyển từ ví chính vào địa chỉ Vault của quỹ.</span>
+        </div>
+        <div class="modal-footer"
+          style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border);">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('deposit-modal')">Hủy</button>
+          <button type="submit" class="btn btn-primary" id="btn-confirm-deposit">Xác nhận nạp</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Rút Tiền Từ Quỹ -->
+  <div class="modal hidden" id="withdraw-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Yêu cầu Rút tiền</h3>
+        <button class="btn-close" onclick="closeModal('withdraw-modal')">×</button>
+      </div>
+      <form id="withdraw-form" onsubmit="handleWithdraw(event)">
+        <div class="form-group">
+          <label>Số dư khả dụng trong Quỹ</label>
+          <div style="font-size: 18px; font-weight: 700; color: var(--accent); margin-top: 4px;">
+            <span id="withdraw-budget-balance">0.00</span> ETH
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="withdraw-title">Mục đích chi tiêu</label>
+          <input type="text" id="withdraw-title" placeholder="Ví dụ: Thanh toán tiền điện tháng 5" required />
+          
+          <div class="spending-suggestions" style="margin-top: 10px;">
+            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">Gợi ý nhanh:</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <div class="suggestion-tag" onclick="selectSpendingSuggestion('Tiền điện', '⚡')">⚡ Tiền điện</div>
+              <div class="suggestion-tag" onclick="selectSpendingSuggestion('Tiền nước', '💧')">💧 Tiền nước</div>
+              <div class="suggestion-tag" onclick="selectSpendingSuggestion('Internet', '🌐')">🌐 Internet</div>
+              <div class="suggestion-tag" onclick="selectSpendingSuggestion('Tiền thuê nhà', '🏠')">🏠 Tiền thuê nhà</div>
+              <div class="suggestion-tag" onclick="selectSpendingSuggestion('Lương nhân viên', '💰')">💰 Lương nhân viên</div>
+              <div class="suggestion-tag" onclick="selectSpendingSuggestion('Mua thiết bị', '🛠️')">🛠️ Thiết bị</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="withdraw-amount">Số lượng rút (ETH)</label>
+          <input type="number" id="withdraw-amount" step="0.0001" min="0.0001" placeholder="0.05" required />
+        </div>
+        <div class="form-group">
+          <label for="withdraw-to">Địa chỉ người nhận</label>
+          <input type="text" id="withdraw-to" placeholder="0x..." required />
+          <span class="form-hint">Mặc định là địa chỉ ví của bạn.</span>
+        </div>
+        <div class="sign-info" style="margin-top: 15px;">
+          <div class="sign-info-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></div>
+          <p>Yêu cầu rút tiền cần đạt đủ số lượng chữ ký phê duyệt từ các thành viên quản trị để thực thi trên Blockchain.</p>
+        </div>
+        <div class="modal-footer"
+          style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border);">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('withdraw-modal')">Hủy</button>
+          <button type="submit" class="btn btn-primary" id="btn-confirm-withdraw">Tạo yêu cầu rút</button>
         </div>
       </form>
     </div>

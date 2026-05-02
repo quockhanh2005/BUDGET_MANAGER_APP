@@ -1,6 +1,9 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Query
 from typing import List, Optional
-from backend.models.budget import BudgetRequest, BudgetResponse, BudgetMember, AddMemberRequest
+from backend.models.budget import (
+    BudgetRequest, BudgetResponse, BudgetMember, AddMemberRequest, 
+    DepositRequest, WithdrawRequestCreate, WithdrawRequestResponse
+)
 from backend.service.budget import BudgetService
 
 router = APIRouter(prefix="/budgets", tags=["budgets"])
@@ -45,5 +48,36 @@ async def remove_member(budget_id: str, address: str, operator_address: Optional
     if not result:
         if message == "Bạn không có quyền xóa thành viên khỏi quỹ này":
             raise HTTPException(status_code=403, detail=message)
+        raise HTTPException(status_code=404, detail=message)
+    return result
+
+@router.get("/{budget_id}/withdraw-requests", response_model=List[WithdrawRequestResponse])
+async def get_withdraw_requests(budget_id: str):
+    return budget_service.get_withdraw_requests(budget_id)
+
+@router.post("/{budget_id}/withdraw-requests", response_model=WithdrawRequestResponse)
+async def create_withdraw_request(budget_id: str, address: str, request: WithdrawRequestCreate):
+    return budget_service.create_withdraw_request(budget_id, address, request.dict())
+
+    return result
+
+@router.post("/withdraw-requests/{request_id}/sign", response_model=WithdrawRequestResponse)
+async def sign_withdraw_request(request_id: str, address: str = Query(...), signature: str = Query(...)):
+    result, msg = budget_service.add_withdraw_signature(request_id, address, signature)
+    if not result:
+        raise HTTPException(status_code=400, detail=msg)
+    return result
+
+@router.delete("/withdraw-requests/{request_id}")
+async def cancel_withdraw_request(request_id: str, operator_address: str = Query(...)):
+    result, msg = budget_service.cancel_withdraw_request(request_id, operator_address)
+    if not result:
+        raise HTTPException(status_code=400, detail=msg)
+    return {"message": msg}
+
+@router.post("/{budget_id}/deposit", response_model=BudgetResponse)
+async def deposit_to_budget(budget_id: str, request: DepositRequest):
+    result, message = budget_service.deposit_to_budget(budget_id, request.dict())
+    if not result:
         raise HTTPException(status_code=404, detail=message)
     return result

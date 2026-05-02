@@ -70,3 +70,12 @@ class MemberService:
                 
             return member
         return None
+
+    def get_all_members(self):
+        """
+        Retrieve all registered members.
+        """
+        members = list(self.collection.find())
+        for m in members:
+            m["id"] = str(m.pop("_id"))
+        return members
