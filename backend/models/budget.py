@@ -25,6 +25,7 @@ class BudgetRequest(BaseModel):
     type: str = "Khác"
     creator_address: str
     vault_address: Optional[str] = None
+    vault_state: str = "active" # created, active, locked, closed
     tx_hash: Optional[str] = None
     gas_fee: Optional[float] = 0.0
     members: List[BudgetMember] = []
@@ -34,6 +35,39 @@ class BudgetRequest(BaseModel):
 class AddMemberRequest(BaseModel):
     address: str
     role: str
+
+class DepositRequest(BaseModel):
+    amount: float
+    tx_hash: str
+    sender_address: str
+    gas_fee: Optional[float] = 0.0
+
+class WithdrawSignature(BaseModel):
+    signer_address: str
+    signature: str
+    created_at: datetime = datetime.now()
+
+class WithdrawRequestCreate(BaseModel):
+    title: Optional[str] = "Rút tiền"
+    to: str
+    amount: float
+    nonce: int
+    deadline: int
+    signature: str # Chữ ký đầu tiên từ người tạo
+
+class WithdrawRequestResponse(BaseModel):
+    id: str
+    budget_id: str
+    title: Optional[str] = "Rút tiền"
+    to: str
+    amount: float
+    nonce: int
+    deadline: int
+    creator_address: str
+    signatures: List[WithdrawSignature] = []
+    status: str = "pending" # pending, executed, cancelled
+    tx_hash: Optional[str] = None
+    created_at: datetime
 
 class BudgetResponse(BudgetRequest):
     id: str

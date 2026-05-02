@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from typing import List
 from backend.service.member import MemberService
 from backend.models.member import MemberRequest, MemberResponse
 from backend.utils.auth import verify_eth_signature
@@ -50,6 +51,13 @@ def get_member_by_address(address: str):
             detail="Ví này chưa được liên kết với tài khoản nào."
         )
     return member
+
+@router.get("/all", response_model=List[MemberResponse])
+def get_all_members():
+    """
+    Lấy danh sách tất cả thành viên đã đăng ký trên hệ thống.
+    """
+    return member_service.get_all_members()
 
 @router.post("/login", response_model=MemberResponse)
 def login_member(address: str, signature: str, message: str):

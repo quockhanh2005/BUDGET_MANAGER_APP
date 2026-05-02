@@ -20,6 +20,10 @@ class MembershipProposalRequest(BaseModel):
     type: str  # "ADD_MEMBER" hoặc "REMOVE_MEMBER"
     target_address: str
     proposer_address: str
+    nonce: int
+    deadline: int
+    signature: str
+    new_threshold: int
     reason: Optional[str] = ""
 
 class MembershipProposalResponse(BaseModel):
@@ -28,6 +32,9 @@ class MembershipProposalResponse(BaseModel):
     type: str
     target_address: str
     proposer_address: str
-    status: str  # "pending", "approved", "rejected"
-    approvals: List[str]
+    nonce: int
+    deadline: int
+    new_threshold: int
+    status: str  # "pending", "executed", "cancelled"
+    signatures: List[dict] = []
     created_at: datetime
