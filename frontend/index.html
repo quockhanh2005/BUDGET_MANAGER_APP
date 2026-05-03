@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Budget Manager - Đăng ký thành viên với MetaMask" />
-  <title>Budget Manager - Đăng Ký Thành Viên</title>
+  <title>Budget Manager</title>
   <style>
   .suggestion-tag {
     padding: 6px 12px;
@@ -27,19 +27,15 @@
 </style>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono&display=swap"
     rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="icon" type="image/png" href="assets/logo.png" />
 </head>
 
 <body>
-  <!-- Các khối hình động nền -->
-  <div class="bg-shapes">
-    <div class="shape shape-1"></div>
-    <div class="shape shape-2"></div>
-    <div class="shape shape-3"></div>
-  </div>
+  <!-- Cosmic Particles Overlay -->
+  <div class="cosmic-particles"></div>
 
   <div class="container">
     <!-- Phần đầu trang -->
@@ -48,13 +44,13 @@
         <div class="logo-icon">
           <img src="assets/logo.png" alt="Budget Manager Logo" width="32" height="32" style="border-radius: 6px;" />
         </div>
-        <h1>Budget Manager</h1>
+        <h1>Budget Manager - Chi tiêu thông minh cho bạn</h1>
       </div>
       <p class="subtitle">Quản lý ngân sách thông minh trên Blockchain</p>
     </header>
 
-    <!-- Thẻ chính -->
-    <main class="main-card">
+    <!-- Thẻ chính (Quy trình đăng ký) -->
+    <main class="main-card" id="main-wizard">
       <!-- Chỉ báo các bước -->
       <div class="steps">
         <div class="step active" id="step-indicator-1">
@@ -298,7 +294,9 @@
         </div>
       </section>
 
-      <!-- Màn hình Dashboard (Giao diện chính sau khi đăng nhập) -->
+    </main>
+
+    <!-- Màn hình Dashboard (Giao diện chính sau khi đăng nhập) -->
       <section class="step-content" id="step-dashboard">
         <div class="dashboard-container">
           <!-- Header -->
@@ -308,7 +306,18 @@
               <p class="description">Quản lý tài chính cá nhân của bạn</p>
             </div>
             <div class="account-status">
-              <span class="status-badge" id="dashboard-wallet-status">--</span>
+              <div class="network-selector" id="network-selector-container">
+                <div class="current-network" id="current-network-display" onclick="toggleNetworkDropdown(event)">
+                  <span class="status-dot"></span>
+                  <span id="dashboard-wallet-status">Đang kết nối: --</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </div>
+                <div class="network-dropdown hidden" id="network-dropdown">
+                  <div class="network-option" onclick="handleSwitchNetwork('0xaa36a7', event)">Sepolia Testnet</div>
+                  <div class="network-option" onclick="handleSwitchNetwork('0x1', event)">Ethereum Mainnet</div>
+                  <div class="network-option" onclick="handleSwitchNetwork('0x539', event)">Localhost (Hardhat)</div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -320,7 +329,7 @@
               <div class="dash-card balance-card">
                 <div class="card-header-mini">
                   <span class="card-label">Tổng số dư khả dụng</span>
-                  <button id="toggle-visibility" class="btn-icon-sm" onclick="toggleBalanceVisibility()">
+                  <button id="toggle-visibility" class="btn-icon-sm" onclick="toggleBalanceVisibility()" title="Ẩn/Hiện số dư">
                     <svg id="eye-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -332,10 +341,11 @@
                   <span id="dashboard-balance">0.00</span>
                   <span class="currency">ETH</span>
                 </div>
+                <p class="balance-change-hint">Số dư ví MetaMask của bạn</p>
                 <div class="wallet-address-mini" id="dashboard-address">0x...</div>
               </div>
 
-              <!-- Menu Hành động nhanh -->
+              <!-- Menu Hành động nhanh (3 actions chính) -->
               <div class="quick-actions-grid">
                 <button class="action-item" onclick="showToast('info', 'Tính năng Nạp tiền đang phát triển')">
                   <div class="action-icon purple"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -344,7 +354,7 @@
                     </svg></div>
                   <span>Nạp tiền</span>
                 </button>
-                <button class="action-item" onclick="showToast('info', 'Tính năng Chuyển tiền đang phát triển')">
+                <button class="action-item" onclick="openTransferModal()">
                   <div class="action-icon blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"
                       stroke="currentColor" stroke-width="2">
                       <path d="m22 2-7 20-4-9-9-4Z" />
@@ -357,16 +367,22 @@
                       stroke="currentColor" stroke-width="2">
                       <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
                     </svg></div>
-                  <span>Quỹ</span>
-                </button>
-                <button class="action-item" onclick="resetForm()">
-                  <div class="action-icon gray"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-                      stroke="currentColor" stroke-width="2">
-                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
-                    </svg></div>
-                  <span>Đăng xuất</span>
+                  <span>Quản lý Quỹ</span>
                 </button>
               </div>
+
+              <!-- Đăng xuất (tách biệt, cấp dưới) -->
+              <button class="logout-action" onclick="resetForm()">
+                <div class="logout-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+                  </svg>
+                </div>
+                <div class="logout-text">
+                  Đăng xuất
+                  <span>Ngắt kết nối ví & quay về màn hình chính</span>
+                </div>
+              </button>
             </div>
 
             <!-- CỘT PHẢI: Thông tin & Trạng thái -->
@@ -376,15 +392,15 @@
                 <div class="card-title">Hồ sơ cá nhân</div>
                 <div class="info-list">
                   <div class="info-item">
-                    <span class="info-label">ID Định danh</span>
+                    <span class="info-label">ID Định danh:</span>
                     <span class="info-value" id="dashboard-member-id">--</span>
                   </div>
                   <div class="info-item">
-                    <span class="info-label">Email</span>
+                    <span class="info-label">Email:</span>
                     <span class="info-value" id="dashboard-email">--</span>
                   </div>
                   <div class="info-item">
-                    <span class="info-label">Ngày gia nhập</span>
+                    <span class="info-label">Ngày gia nhập:</span>
                     <span class="info-value" id="dashboard-created-at">--</span>
                   </div>
                 </div>
@@ -415,147 +431,146 @@
       <!-- Màn hình Dashboard dành riêng cho Budget -->
       <section class="step-content" id="step-budget-dashboard">
         <div class="dashboard-container">
-          <!-- Header quay lại -->
-          <div class="dashboard-header">
-            <div class="header-with-back">
+          <!-- ── HERO OVERVIEW CARD ── -->
+          <div class="budget-hero-card dash-card">
+            <!-- Topbar: back + badges + utilities -->
+            <div class="bh-topbar">
               <button class="btn-back" onclick="goToBudgetManagement()">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="m15 18-6-6 6-6" />
-                </svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
               </button>
-              <div class="budget-header-info">
-                <h2 id="budget-title">Tên Quỹ</h2>
-                <div class="budget-id-share" onclick="copyBudgetId()" title="Nhấn để sao chép mã ID">
-                  <span id="budget-id-display">---</span>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                  </svg>
-                </div>
-                <div class="vault-address-display" onclick="copyVaultAddress()" title="Địa chỉ Smart Contract của Quỹ" style="font-size: 11px; color: var(--text-secondary); opacity: 0.8; margin-top: 4px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 16V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2z"></path>
-                    <path d="M7 10l3 3 3-3 4 4"></path>
-                  </svg>
-                  Vault: <span id="budget-vault-address">0x...</span>
-                </div>
-                <div class="budget-badges">
-                  <span class="status-badge" id="budget-status">Hoạt động</span>
-                  <span class="type-badge" id="budget-type">Gia đình</span>
-                </div>
+              <div class="bh-badges">
+                <span class="status-badge" id="budget-status">Hoạt động</span>
+                <span class="type-badge" id="budget-type">Cá nhân</span>
               </div>
-            </div>
-            <div class="budget-actions" style="display: flex; flex-direction: column; gap: 12px; min-width: 180px;">
-              <div style="display: flex; gap: 10px; width: 100%;">
-                <button class="btn btn-sm" onclick="openDepositModal()" style="flex: 1; background: linear-gradient(135deg, #FFD700 0%, #B8860B 100%); color: #000; font-weight: 700; box-shadow: 0 4px 15px rgba(184, 134, 11, 0.4); border: none;">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                  Nạp quỹ
+              <div class="utilities-dropdown-wrapper bh-utilities">
+                <button class="btn-icon-sm" onclick="toggleUtilitiesDropdown(event)" title="Tùy chọn">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
                 </button>
-                <button class="btn btn-sm" onclick="handleDeleteBudget()" style="background: rgba(139, 113, 110, 0.2); color: #8B716E; border: 1px solid rgba(139, 113, 110, 0.4); padding: 8px 12px; transition: all 0.3s;" title="Xóa Quỹ">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                  </svg>
-                </button>
-              </div>
-              <button class="btn btn-sm" onclick="openWithdrawModal()" style="width: 100%; background: linear-gradient(135deg, #8B716E 0%, #4A3B39 100%); color: #E6E6E6; border: none; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z" />
-                </svg>
-                Rút quỹ
-              </button>
-            </div>
-          </div>
-
-          <div class="dashboard-grid">
-            <!-- CỘT TRÁI: Số dư & Biểu đồ -->
-            <div class="dash-column">
-              <div class="dash-card budget-balance-card">
-                <span class="card-label">Số dư trong quỹ</span>
-                <div class="balance-amount">
-                  <span id="budget-balance">0.00</span>
-                  <span class="currency">ETH</span>
-                </div>
-                <p class="budget-desc" id="budget-description">Mô tả về mục tiêu của quỹ này.</p>
-              </div>
-
-              <!-- Danh sách thành viên trong quỹ -->
-              <div class="dash-card budget-members-card">
-                <div class="card-header-mini">
-                  <span class="card-title">Thành viên Quỹ</span>
-                  <button class="btn-icon-sm" onclick="openAddMemberModal()" title="Thêm thành viên">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                      stroke-linecap="round" stroke-linejoin="round">
-                      <line x1="12" y1="5" x2="12" y2="19"></line>
-                      <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
+                <div class="utilities-dropdown hidden" id="utilities-dropdown">
+                  <button onclick="handleDeleteBudget(); closeUtilitiesDropdown()"
+                    style="width:100%;background:transparent;border:none;padding:13px 16px;display:flex;align-items:center;gap:10px;color:#ff6b6b;cursor:pointer;font-size:13.5px;font-weight:600;transition:background 0.2s;text-align:left;"
+                    onmouseover="this.style.background='rgba(244,67,54,0.12)'" onmouseout="this.style.background='transparent'">
+                    <span style="width:30px;height:30px;background:rgba(244,67,54,0.15);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </span>
+                    <div><div>Xóa Quỹ</div><div style="font-size:11px;color:rgba(255,107,107,0.6);font-weight:400;margin-top:1px;">Xóa vĩnh viễn, không thể khôi phục</div></div>
                   </button>
-                  <span class="member-count" id="budget-member-count">0 thành viên</span>
-                </div>
-                <div class="members-list" id="budget-members-list">
-                  <!-- Rendered via JS -->
                 </div>
               </div>
             </div>
-
-            <!-- CỘT PHẢI: Giao dịch & Quy tắc -->
-            <div class="dash-column">
-              <!-- Yêu cầu rút tiền đang chờ duyệt (Chỉ hiện khi có) -->
-              <div id="pending-withdraw-container" class="pending-section hidden" style="margin-bottom: 24px;">
-                <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                  <h3 style="font-size: 14px; text-transform: uppercase; color: var(--warning); letter-spacing: 0.05em; display: flex; align-items: center; gap: 8px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-                    Đề xuất đang chờ duyệt (Multi-sig)
-                  </h3>
-                </div>
-                <div id="pending-withdraw-list" style="display: flex; flex-direction: column; gap: 12px;">
-                  <!-- Yêu cầu sẽ được render ở đây -->
-                </div>
-              </div>
-
-              <!-- Quy tắc chi tiêu -->
-              <div class="dash-card budget-rules-card">
-                <div class="card-title">Quy tắc chi tiêu</div>
-                <div class="rules-list" id="budget-rules-list">
-                  <!-- Rendered via JS -->
-                </div>
-              </div>
-
-              <!-- Gợi ý đề xuất -->
-              <div class="dash-card">
-                <div class="card-title">Gợi ý đề xuất</div>
-                <div class="spending-suggestions-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
-                  <button class="suggestion-btn" onclick="openWithdrawModal()" style="background: rgba(76, 175, 80, 0.1); color: #4caf50; border: 1px solid #4caf50; padding: 12px; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px;">
-                    💸 Rút quỹ chi tiêu
-                  </button>
-                  <button class="suggestion-btn" onclick="openModal('add-member-modal')" style="background: rgba(33, 150, 243, 0.1); color: #2196f3; border: 1px solid #2196f3; padding: 12px; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px;">
-                    👤+ Thêm thành viên
-                  </button>
-                  <button class="suggestion-btn" onclick="showToast('info', 'Vui lòng nhấn nút X đỏ bên cạnh tên thành viên trong danh sách bên trái để xóa.')" style="background: rgba(244, 67, 54, 0.1); color: #f44336; border: 1px solid #f44336; padding: 12px; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px;">
-                    🚫 Xóa thành viên
-                  </button>
-                  <button class="suggestion-btn" onclick="openChangeThresholdModal()" style="background: rgba(255, 152, 0, 0.1); color: #ff9800; border: 1px solid #ff9800; padding: 12px; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px;">
-                    👥 Đổi ngưỡng duyệt
-                  </button>
-                </div>
-              </div>
-
-              <!-- Lịch sử giao dịch quỹ -->
-              <div class="dash-card budget-history-card">
-                <div class="card-title">Giao dịch gần đây</div>
-                <div class="transaction-list" id="budget-history-list">
-                  <div class="empty-state">
-                    <p>Chưa có giao dịch nào</p>
+            <!-- Overview: name | balance | actions -->
+            <div class="bh-overview">
+              <!-- Left: fund name + IDs -->
+              <div class="bh-identity">
+                <h2 class="bh-title" id="budget-title">Tên Quỹ</h2>
+                <div class="bh-identifiers">
+                  <div class="info-tag" onclick="copyBudgetId()" title="Sao chép ID Quỹ">
+                    <span class="tag-label">ID</span>
+                    <span class="tag-value" id="budget-id-display">---</span>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  </div>
+                  <div class="info-tag" onclick="copyVaultAddress()" title="Sao chép địa chỉ Vault">
+                    <span class="tag-label">VAULT</span>
+                    <span class="tag-value" id="budget-vault-address">0x...</span>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                   </div>
                 </div>
               </div>
+              <!-- Center: balance -->
+              <div class="bh-balance-block">
+                <span class="bh-balance-label">Số dư trong quỹ</span>
+                <div class="bh-balance-amount">
+                  <span id="budget-balance">0.0000</span>
+                  <span class="bh-currency">ETH</span>
+                </div>
+                <p class="bh-desc" id="budget-description">Mô tả về mục tiêu của quỹ này.</p>
+              </div>
+              <!-- Right: primary CTAs -->
+              <div class="bh-actions">
+                <button class="bh-btn bh-btn-primary" onclick="openDepositModal()">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                  Nạp quỹ
+                </button>
+                <button class="bh-btn bh-btn-secondary" onclick="openWithdrawModal()">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                  Rút quỹ
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      </section>
+          </div><!-- /budget-hero-card -->
 
-      <!-- Màn hình Quản lý Quỹ (Tổng quan tính năng Quỹ) -->
+          <!-- ── MAIN GRID ── -->
+          <div class="dashboard-grid" style="margin-top:24px;">
+
+            <!-- CỘT TRÁI: Thành viên + Thao tác nhanh -->
+            <div class="dash-column">
+              <div class="dash-card budget-members-card">
+                <div class="card-header-mini">
+                  <span class="card-title">Thành viên Quỹ</span>
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <span class="member-count" id="budget-member-count">0 thành viên</span>
+                    <button class="btn-icon-sm" onclick="openAddMemberModal()" title="Thêm thành viên">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+                  </div>
+                </div>
+                <div class="members-list" id="budget-members-list"><!-- Rendered via JS --></div>
+              </div>
+
+              <div class="dash-card">
+                <div class="card-title">Thao tác nhanh</div>
+                <div class="suggestion-list">
+                  <button class="suggestion-row" onclick="openWithdrawModal()">
+                    <span class="suggestion-icon suggestion-green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></span>
+                    <span class="suggestion-text"><span class="suggestion-label">Rút quỹ chi tiêu</span><span class="suggestion-desc">Tạo đề xuất rút tiền từ quỹ</span></span>
+                    <svg class="suggestion-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+                  </button>
+                  <button class="suggestion-row" onclick="openAddMemberModal()">
+                    <span class="suggestion-icon suggestion-blue"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg></span>
+                    <span class="suggestion-text"><span class="suggestion-label">Thêm thành viên</span><span class="suggestion-desc">Mời thành viên mới vào quỹ</span></span>
+                    <svg class="suggestion-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+                  </button>
+                  <button class="suggestion-row" onclick="showToast('info','Nhấn nút ✕ bên cạnh tên thành viên để xóa.')">
+                    <span class="suggestion-icon suggestion-red"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="22" y1="8" x2="16" y2="14"/><line x1="16" y1="8" x2="22" y2="14"/></svg></span>
+                    <span class="suggestion-text"><span class="suggestion-label">Xóa thành viên</span><span class="suggestion-desc">Xem hướng dẫn xóa thành viên</span></span>
+                    <svg class="suggestion-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+                  </button>
+                  <button class="suggestion-row" onclick="openChangeThresholdModal()">
+                    <span class="suggestion-icon suggestion-orange"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg></span>
+                    <span class="suggestion-text"><span class="suggestion-label">Đổi ngưỡng duyệt</span><span class="suggestion-desc">Thay đổi số chữ ký yêu cầu</span></span>
+                    <svg class="suggestion-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- CỘT PHẢI: Pending + Rules + History -->
+            <div class="dash-column">
+              <div id="pending-withdraw-container" class="pending-section hidden" style="margin-bottom:24px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                  <h3 style="font-size:13px;text-transform:uppercase;color:var(--warning);letter-spacing:.06em;display:flex;align-items:center;gap:8px;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                    Đề xuất chờ duyệt (Multi-sig)
+                  </h3>
+                </div>
+                <div id="pending-withdraw-list" style="display:flex;flex-direction:column;gap:12px;"></div>
+              </div>
+
+              <div class="dash-card budget-rules-card">
+                <div class="card-title">Quy tắc chi tiêu</div>
+                <div class="rules-list" id="budget-rules-list"><!-- Rendered via JS --></div>
+              </div>
+
+              <div class="dash-card budget-history-card">
+                <div class="card-title">Giao dịch gần đây</div>
+                <div class="transaction-list" id="budget-history-list">
+                  <div class="empty-state"><p>Chưa có giao dịch nào</p></div>
+                </div>
+              </div>
+            </div>
+          </div><!-- /dashboard-grid -->
+        </div><!-- /dashboard-container -->
+      </section>
       <section class="step-content" id="step-budget-management">
         <div class="dashboard-container">
           <!-- Header -->
@@ -625,8 +640,43 @@
 
             <!-- CỘT PHẢI: Danh sách các thẻ Quỹ -->
             <div class="dash-column">
-              <div class="dash-card">
-                <div class="card-title">Danh sách các Quỹ</div>
+              <div class="dash-card budget-list-card">
+                <!-- Header: tiêu đề + sort -->
+                <div class="budget-list-header">
+                  <span class="card-title" style="margin-bottom:0;">Danh sách Quỹ</span>
+                  <div class="budget-sort-wrap">
+                    <label class="sort-label">Sắp xếp:</label>
+                    <!-- Custom Sort Dropdown -->
+                    <div class="custom-select-wrapper" id="sort-dropdown-wrapper">
+                      <button class="custom-select-btn" id="sort-dropdown-btn" onclick="toggleSortDropdown(event)">
+                        <span id="sort-selected-label">Tên A→Z</span>
+                        <svg class="custom-select-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+                      </button>
+                      <div class="custom-select-menu hidden" id="sort-dropdown-menu">
+                        <div class="custom-select-item active" data-value="name-asc"     onclick="selectSortOption(this,'Tên A→Z')">Tên A→Z</div>
+                        <div class="custom-select-item"        data-value="balance-desc" onclick="selectSortOption(this,'Số dư cao nhất')">Số dư cao nhất</div>
+                        <div class="custom-select-item"        data-value="balance-asc"  onclick="selectSortOption(this,'Số dư thấp nhất')">Số dư thấp nhất</div>
+                        <div class="custom-select-item"        data-value="members-desc" onclick="selectSortOption(this,'Nhiều thành viên')">Nhiều thành viên</div>
+                      </div>
+                    </div>
+                    <!-- Hidden real value for JS -->
+                    <select id="budget-sort-select" style="display:none;">
+                      <option value="name-asc">Tên A→Z</option>
+                      <option value="balance-desc">Số dư cao nhất</option>
+                      <option value="balance-asc">Số dư thấp nhất</option>
+                      <option value="members-desc">Nhiều thành viên</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Filter tabs -->
+                <div class="budget-filter-tabs" id="budget-filter-tabs">
+                  <button class="filter-tab active" data-filter="all"    onclick="setBudgetFilter('all',this)">Tất cả <span class="tab-count" id="count-all">0</span></button>
+                  <button class="filter-tab"        data-filter="active" onclick="setBudgetFilter('active',this)">Hoạt động <span class="tab-count" id="count-active">0</span></button>
+                  <button class="filter-tab"        data-filter="inactive" onclick="setBudgetFilter('inactive',this)">Không hoạt động <span class="tab-count" id="count-inactive">0</span></button>
+                </div>
+
+                <!-- Danh sách quỹ (không scroll ẩn) -->
                 <div class="budget-feature-list" id="budget-feature-grid">
                   <!-- Rendered via JS -->
                 </div>
@@ -635,9 +685,6 @@
           </div>
         </div>
       </section>
-
-
-    </main>
 
     <!-- Phần chân trang -->
     <footer class="footer">
@@ -670,19 +717,34 @@
         </div>
         <div class="form-group">
           <label for="budget-description">Mô tả</label>
-          <textarea id="budget-description" placeholder="Mục tiêu của quỹ này là gì?" rows="3"
+          <textarea id="create-budget-description" placeholder="Mục tiêu của quỹ này là gì?" rows="3"
             style="width: 100%; padding: 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-family: inherit; margin-top: 8px;"></textarea>
         </div>
         <div class="form-group">
-          <label for="create-budget-type">Loại Quỹ</label>
-          <select id="create-budget-type" required
-            style="width: 100%; padding: 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-family: inherit; margin-top: 8px;">
-            <option value="Cá nhân">Cá nhân</option>
-            <option value="Gia đình">Gia đình</option>
-            <option value="Công việc">Công việc</option>
-            <option value="Tiết kiệm">Tiết kiệm</option>
-            <option value="Khác">Khác</option>
-          </select>
+          <label>Loại Quỹ</label>
+          <input type="hidden" id="create-budget-type" value="Cá nhân" required />
+          <div class="budget-type-grid">
+            <div class="type-select-item active" onclick="selectBudgetType('Cá nhân', this)">
+              <div class="type-icon">👤</div>
+              <span>Cá nhân</span>
+            </div>
+            <div class="type-select-item" onclick="selectBudgetType('Gia đình', this)">
+              <div class="type-icon">🏠</div>
+              <span>Gia đình</span>
+            </div>
+            <div class="type-select-item" onclick="selectBudgetType('Công việc', this)">
+              <div class="type-icon">💼</div>
+              <span>Công việc</span>
+            </div>
+            <div class="type-select-item" onclick="selectBudgetType('Tiết kiệm', this)">
+              <div class="type-icon">💰</div>
+              <span>Tiết kiệm</span>
+            </div>
+            <div class="type-select-item" onclick="selectBudgetType('Khác', this)">
+              <div class="type-icon">✨</div>
+              <span>Khác</span>
+            </div>
+          </div>
         </div>
         <div class="form-group hidden" id="budget-type-other-container" style="margin-top: 12px;">
           <label for="budget-type-other">Tên loại quỹ tự chọn</label>
@@ -883,9 +945,74 @@
     </div>
   </div>
 
+  <!-- Modal Chuyển Tiền Cá Nhân -->
+  <div class="modal hidden" id="transfer-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Chuyển tiền</h3>
+        <button class="btn-close" onclick="closeModal('transfer-modal')">×</button>
+      </div>
+      <form id="transfer-form" onsubmit="handleTransfer(event)">
+        <div class="form-group">
+          <label>Số dư khả dụng</label>
+          <div style="font-size: 18px; font-weight: 700; color: var(--purple-primary); margin-top: 4px;">
+            <span id="transfer-wallet-balance">0.00</span> ETH
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="transfer-to">Địa chỉ người nhận</label>
+          <div style="display: flex; gap: 10px;">
+            <input type="text" id="transfer-to" placeholder="0x..." required style="flex: 1;" />
+            <button type="button" class="btn btn-secondary" onclick="openSystemMembersModal('transfer-to')" style="padding: 0 15px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </button>
+          </div>
+          <span class="form-hint">Nhập địa chỉ ví hoặc chọn từ danh sách thành viên.</span>
+        </div>
+
+        <div class="form-group">
+          <label for="transfer-amount">Số lượng chuyển (ETH)</label>
+          <input type="number" id="transfer-amount" step="0.0001" min="0.0001" placeholder="0.05" required />
+        </div>
+
+        <div class="form-group">
+          <label for="transfer-title">Ghi chú / Tiêu đề</label>
+          <input type="text" id="transfer-title" placeholder="Ví dụ: Trả tiền ăn tối" required />
+        </div>
+
+        <div class="modal-footer"
+          style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border);">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('transfer-modal')">Hủy</button>
+          <button type="submit" class="btn btn-primary" id="btn-confirm-transfer">Xác nhận gửi</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
   <script src="abi.js"></script>
-  <script src="app.js"></script>
+
+  <!-- Modular JS Components -->
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/navigation.js"></script>
+  <script src="js/wallet.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/budget.js"></script>
+  <script src="js/budget-dashboard.js"></script>
+  <script src="js/members.js"></script>
+  <script src="js/proposals.js"></script>
+  <script src="js/deposit.js"></script>
+  <script src="js/withdraw.js"></script>
+  <script src="js/transfer.js"></script>
+  <script src="js/app.js"></script>
 </body>
 
 </html>

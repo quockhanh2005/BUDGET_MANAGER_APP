@@ -72,4 +72,36 @@ class WalletService:
             history.append(doc)
         return history
 
+    def save_dual_transaction(self, from_address: str, to_address: str, amount: float, title: str, hash: str, gas_fee: float = 0.0):
+        """
+        Save transaction records for both sender and receiver.
+        """
+        now = datetime.utcnow()
+        
+        # 1. Record for sender (Expense)
+        sender_tx = {
+            "wallet_address": from_address.lower(),
+            "title": f"Chuyển tiền: {title}",
+            "amount": -abs(amount),
+            "type": "expense",
+            "hash": hash,
+            "gas_fee": gas_fee,
+            "created_at": now
+        }
+        
+        # 2. Record for receiver (Income)
+        receiver_tx = {
+            "wallet_address": to_address.lower(),
+            "title": f"Nhận tiền: {title}",
+            "amount": abs(amount),
+            "type": "income",
+            "hash": hash,
+            "gas_fee": 0.0, # Receiver doesn't pay gas
+            "created_at": now
+        }
+        
+        self.history_collection.insert_one(sender_tx)
+        self.history_collection.insert_one(receiver_tx)
+        return True
+
 

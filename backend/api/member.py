@@ -1,15 +1,27 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from typing import List
 from backend.service.member import MemberService
-from backend.models.member import MemberRequest, MemberResponse
+from backend.service.proposal import ProposalService
+from backend.models.member import (
+    MemberRequest, 
+    MemberResponse, 
+    MemberBudgetResponse, 
+    MembershipProposalRequest, 
+    MembershipProposalResponse
+)
 from backend.utils.auth import verify_eth_signature
 
-router = APIRouter(prefix="/members", tags=["members"])
+# Router cho quản lý thành viên (Prefix: /members)
+member_router = APIRouter(prefix="/members", tags=["members"])
+# Router cho quản lý membership trong quỹ (Prefix: /membership)
+membership_router = APIRouter(prefix="/membership", tags=["membership"])
+
 member_service = MemberService()
+proposal_service = ProposalService()
 
-# Base URL = "localhost:8080/members"
+# --- Member Router Routes ---
 
-@router.post("/", response_model=MemberResponse)
+@member_router.post("/", response_model=MemberResponse)
 def create_member(member: MemberRequest):
     # Xác thực chữ ký MetaMask từ Backend
     is_valid = verify_eth_signature(
@@ -38,7 +50,7 @@ def create_member(member: MemberRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi hệ thống: {str(e)}")
 
-@router.get("/", response_model=MemberResponse)
+@member_router.get("/", response_model=MemberResponse)
 def get_member_by_address(address: str):
     """
     Kiểm tra xem ví đã được tạo tài khoản chưa.
@@ -52,14 +64,14 @@ def get_member_by_address(address: str):
         )
     return member
 
-@router.get("/all", response_model=List[MemberResponse])
+@member_router.get("/all", response_model=List[MemberResponse])
 def get_all_members():
     """
     Lấy danh sách tất cả thành viên đã đăng ký trên hệ thống.
     """
     return member_service.get_all_members()
 
-@router.post("/login", response_model=MemberResponse)
+@member_router.post("/login", response_model=MemberResponse)
 def login_member(address: str, signature: str, message: str):
     """
     Xác thực chữ ký MetaMask và kiểm tra tài khoản.
@@ -85,3 +97,36 @@ def login_member(address: str, signature: str, message: str):
         )
 
     return member
+
+# --- Membership Router Routes ---
+
+@membership_router.get("/budgets", response_model=List[MemberBudgetResponse])
+async def get_my_budgets(address: str = Query(..., description="Địa chỉ ví của member")):
+    """ Xem danh sách quỹ đang tham gia"""
+    return member_service.get_my_budgets(address)
+
+@membership_router.get("/budgets/{budget_id}", response_model=MemberBudgetResponse)
+async def get_budget_details(budget_id: str):
+    """ Xem chi tiết quỹ"""
+    budget = member_service.get_budget_details(budget_id)
+    if not budget:
+        raise HTTPException(status_code=404, detail="Không tìm thấy quỹ")
+    return budget
+
+@membership_router.post("/proposals", response_model=MembershipProposalResponse)
+async def create_membership_proposal(proposal: MembershipProposalRequest):
+    """Tạo proposal thêm/xóa thành viên"""
+    try:
+        result = proposal_service.create_membership_proposal(
+            budget_id=proposal.budget_id,
+            p_type=proposal.type,
+            target_address=proposal.target_address,
+            proposer_address=proposal.proposer_address,
+            nonce=proposal.nonce,
+            deadline=proposal.deadline,
+            signature=proposal.signature,
+            new_threshold=proposal.new_threshold
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

@@ -242,6 +242,10 @@ class BudgetService:
         return True, "Đã hủy yêu cầu"
 
     def mark_withdraw_executed(self, request_id: str, tx_hash: str):
+        request = self.withdraw_collection.find_one({"id": request_id})
+        if not request: return False
+
+        # 1. Cập nhật trạng thái yêu cầu
         self.withdraw_collection.update_one(
             {"id": request_id},
             {"$set": {
@@ -250,6 +254,50 @@ class BudgetService:
                 "executed_at": datetime.utcnow()
             }}
         )
+
+        # 2. Cập nhật số dư và lịch sử của Quỹ (Budget)
+        budget_id = request["budget_id"]
+        amount = request["amount"]
+        recipient = request["to"]
+        title = request["title"]
+
+        self.collection.update_one(
+            {"id": budget_id},
+            {
+                "$inc": {"balance": -amount},
+                "$push": {"transactions": {
+                    "title": f"Rút tiền: {title}",
+                    "amount": -amount,
+                    "date": datetime.utcnow().isoformat(),
+                    "type": "withdraw",
+                    "hash": tx_hash,
+                    "recipient": recipient
+                }}
+            }
+        )
+
+        # 3. Ghi log vào lịch sử ví cá nhân của người nhận (để hiện ở dashboard của họ)
+        self.wallet_service.save_transaction({
+            "wallet_address": recipient,
+            "title": f"Nhận tiền từ quỹ: {title}",
+            "amount": amount,
+            "type": "income",
+            "hash": tx_hash,
+            "gas_fee": 0.0
+        })
+
+        # 4. Ghi log cho người đề xuất (Proposer) để họ biết giao dịch đã được thực thi
+        proposer = request.get("creator_address")
+        if proposer and proposer.lower() != recipient.lower():
+            self.wallet_service.save_transaction({
+                "wallet_address": proposer.lower(),
+                "title": f"Đã thực thi rút tiền: {title}",
+                "amount": 0.0, # Không ảnh hưởng số dư ví người đề xuất
+                "type": "expense",
+                "hash": tx_hash,
+                "gas_fee": 0.0 # Nếu dùng relayer thì gas = 0
+            })
+
         return True
 
     def delete_budget(self, budget_id: str, operator_address: str, role: str = None):
