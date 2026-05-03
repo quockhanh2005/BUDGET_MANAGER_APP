@@ -8,9 +8,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from backend import config
 
-from backend.api.member import router as member_router
+from backend.api.member import member_router, membership_router
 from backend.api.budget import router as budget_router
-from backend.api.membership import router as membership_router
 from backend.api.proposal import router as proposal_router
 from backend.api.wallet import router as wallet_router
 

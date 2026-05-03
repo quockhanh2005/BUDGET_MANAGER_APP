@@ -75,6 +75,13 @@ async def cancel_withdraw_request(request_id: str, operator_address: str = Query
         raise HTTPException(status_code=400, detail=msg)
     return {"message": msg}
 
+@router.post("/withdraw-requests/{request_id}/executed")
+async def mark_withdraw_executed_endpoint(request_id: str, tx_hash: str = Query(...)):
+    result = budget_service.mark_withdraw_executed(request_id, tx_hash)
+    if not result:
+        raise HTTPException(status_code=400, detail="Lỗi khi xác nhận thực thi")
+    return {"status": "success"}
+
 @router.post("/{budget_id}/deposit", response_model=BudgetResponse)
 async def deposit_to_budget(budget_id: str, request: DepositRequest):
     result, message = budget_service.deposit_to_budget(budget_id, request.dict())

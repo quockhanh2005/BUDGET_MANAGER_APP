@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, Query
 from typing import List
 from backend.service.proposal import ProposalService
-from backend.models.proposal import ApprovalRequest, MembershipProposalRequest, MembershipProposalResponse
+from backend.models.member import MembershipProposalRequest, MembershipProposalResponse
+from backend.models.proposal import ApprovalRequest
 
 router = APIRouter(prefix="/proposals-management", tags=["proposals-management"])
 proposal_service = ProposalService()
