@@ -1,9 +1,10 @@
 /**
  * SCRIPT DEPLOY BLOCKCHAIN - Budget Manager App
  *
- * Luồng deploy bắt buộc (2 bước, theo thứ tự):
+ * Luồng deploy bắt buộc (3 bước, theo thứ tự):
  *   Bước 1: Deploy SharedVault (hợp đồng mẫu / Template)
  *   Bước 2: Deploy VaultFactory (truyền địa chỉ của SharedVault vào)
+ *   Bước 3: Deploy ExpenseManager (truyền địa chỉ của VaultFactory vào)
  *
  * Cách chạy trên mạng cục bộ (local):
  *   1. Mở terminal 1: npx hardhat node
@@ -59,6 +60,21 @@ async function main() {
   console.log(`✅ VaultFactory đã deploy tại: ${vaultFactoryAddress}`);
 
   // =============================================================
+  // BƯỚC 3: Deploy ExpenseManager (Quản lý hạn mức chi tiêu)
+  //
+  // Giải thích đơn giản:
+  //   ExpenseManager cần địa chỉ VaultFactory để xác thực (Access Control).
+  //   Chỉ các Quỹ do Factory tạo ra mới được phép ghi dữ liệu.
+  // =============================================================
+  console.log("\n[Bước 3/3] Đang deploy ExpenseManager...");
+  const ExpenseManager = await ethers.getContractFactory("ExpenseManager");
+  const expenseManager = await ExpenseManager.deploy(vaultFactoryAddress);
+  await expenseManager.waitForDeployment();
+
+  const expenseManagerAddress = await expenseManager.getAddress();
+  console.log(`✅ ExpenseManager đã deploy tại: ${expenseManagerAddress}`);
+
+  // =============================================================
   // KẾT QUẢ - Các địa chỉ quan trọng cần lưu lại vào file .env
   // =============================================================
   console.log("\n=====================================================");
@@ -67,6 +83,7 @@ async function main() {
   console.log("⚠️  Hãy sao chép các địa chỉ sau vào file .env của Backend:");
   console.log(`\nVAULT_TEMPLATE_ADDRESS=${sharedVaultAddress}`);
   console.log(`VAULT_FACTORY_ADDRESS=${vaultFactoryAddress}`);
+  console.log(`EXPENSE_MANAGER_ADDRESS=${expenseManagerAddress}`);
   console.log("=====================================================\n");
 }
 

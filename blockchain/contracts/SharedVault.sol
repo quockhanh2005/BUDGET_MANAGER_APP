@@ -7,6 +7,14 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /**
+ * @title IExpenseManager
+ * @dev Giao dien toi thieu de SharedVault tuong tac voi ExpenseManager.
+ */
+interface IExpenseManager {
+    function validateTransaction(uint256 categoryId, uint256 amount) external returns (bool);
+}
+
+/**
  * @title SharedVault
  * @dev Kien truc phan quyen moi: System Admin (Off-chain), Owner, Member, Contributor.
  */
@@ -32,9 +40,14 @@ contract SharedVault is Initializable, EIP712Upgradeable, ReentrancyGuard {
     // Chong tan cong phat lai (Replay Attack)
     mapping(uint256 => bool) public executedNonces;
 
+    // --- TICH HOP EXPENSE MANAGER ---
+    // Hop dong quan ly han muc chi tieu (optional — co the = address(0))
+    IExpenseManager public expenseManager;
+
     // Cau truc Hash theo chuan EIP-712
+    // Luu y: categoryId duoc them vao de dam bao tinh toan ven EIP-712
     bytes32 public constant WITHDRAW_TYPEHASH = keccak256(
-        "WithdrawRequest(address to,uint256 amount,uint256 nonce,uint256 deadline)"
+        "WithdrawRequest(address to,uint256 amount,uint256 categoryId,uint256 nonce,uint256 deadline)"
     );
     bytes32 public constant CLOSE_FUND_TYPEHASH = keccak256(
         "CloseFundRequest(uint256 nonce,uint256 deadline)"
@@ -48,10 +61,11 @@ contract SharedVault is Initializable, EIP712Upgradeable, ReentrancyGuard {
 
     event VaultInitialized(address indexed owner, address[] members, uint256 threshold);
     event Deposit(address indexed sender, address indexed onBehalfOf, uint256 amount);
-    event WithdrawExecuted(uint256 indexed nonce, address indexed to, uint256 amount);
+    event WithdrawExecuted(uint256 indexed nonce, address indexed to, uint256 amount, uint256 categoryId);
     event FundClosed();
     event MemberAdded(address indexed newMember, uint256 newThreshold);
     event MemberRemoved(address indexed oldMember, uint256 newThreshold);
+    event ExpenseManagerUpdated(address indexed oldManager, address indexed newManager);
 
     modifier onlyActive() {
         require(state == VaultState.Active, "Quy khong o trang thai Hoat dong");
@@ -146,19 +160,46 @@ contract SharedVault is Initializable, EIP712Upgradeable, ReentrancyGuard {
     }
 
     /**
-     * @dev ROLE 2: Member - Bieu quyet rut tien
+     * @dev Thiet lap hoac cap nhat dia chi ExpenseManager.
+     *      Chi owner moi duoc phep thay doi.
+     *      Truyen address(0) de tat kiem soat han muc (dung cho vault khong dung ExpenseManager).
+     * @param _expenseManager Dia chi cua ExpenseManager da deploy
+     */
+    function setExpenseManager(address _expenseManager) external {
+        require(msg.sender == owner, "SharedVault: Chi owner moi duoc thiet lap ExpenseManager");
+        address old = address(expenseManager);
+        expenseManager = IExpenseManager(_expenseManager);
+        emit ExpenseManagerUpdated(old, _expenseManager);
+    }
+
+    /**
+     * @dev ROLE 2: Member - Bieu quyet rut tien.
+     *      Neu ExpenseManager duoc ket noi, se kiem tra han muc truoc khi rut.
+     * @param _to Dia chi nhan tien
+     * @param _amount So tien can rut (Wei)
+     * @param _categoryId Ma danh muc chi tieu (tuong ung voi ExpenseManager va MongoDB)
+     * @param _nonce So thu tu giao dich (chong replay attack)
+     * @param _deadline Thoi han hop le cua chu ky
+     * @param _signatures Mang chu ky cua cac Member
      */
     function executeWithdraw(
         address payable _to,
         uint256 _amount,
+        uint256 _categoryId,
         uint256 _nonce,
         uint256 _deadline,
         bytes[] calldata _signatures
     ) external nonReentrant onlyActive {
         require(address(this).balance >= _amount, "So du quy khong du");
 
+        // Kiem tra han muc chi tieu truoc khi thuc hien giao dich
+        // Checks-Effects: validateTransaction se revert neu vi pham -- an toan truoc khi transfer
+        if (address(expenseManager) != address(0)) {
+            expenseManager.validateTransaction(_categoryId, _amount);
+        }
+
         bytes32 structHash = keccak256(
-            abi.encode(WITHDRAW_TYPEHASH, _to, _amount, _nonce, _deadline)
+            abi.encode(WITHDRAW_TYPEHASH, _to, _amount, _categoryId, _nonce, _deadline)
         );
         
         _verifySignatures(structHash, _nonce, _deadline, _signatures);
@@ -166,7 +207,7 @@ contract SharedVault is Initializable, EIP712Upgradeable, ReentrancyGuard {
         (bool success, ) = _to.call{value: _amount}("");
         require(success, "Giao dich chuyen tien that bai");
 
-        emit WithdrawExecuted(_nonce, _to, _amount);
+        emit WithdrawExecuted(_nonce, _to, _amount, _categoryId);
     }
 
     /**
@@ -186,7 +227,7 @@ contract SharedVault is Initializable, EIP712Upgradeable, ReentrancyGuard {
         bool hasOwnerSig = _verifySignatures(structHash, _nonce, _deadline, _signatures);
         require(hasOwnerSig, "Bat buoc phai co chu ky cua Owner de dong quy");
 
-        isActive = false;
+        state = VaultState.Closed;
         emit FundClosed();
     }
 
