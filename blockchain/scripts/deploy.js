@@ -75,6 +75,14 @@ async function main() {
   console.log(`✅ ExpenseManager đã deploy tại: ${expenseManagerAddress}`);
 
   // =============================================================
+  // BƯỚC 4: Kết nối ExpenseManager với VaultFactory
+  // =============================================================
+  console.log("\n[Bước 4] Đang kết nối ExpenseManager với VaultFactory...");
+  const setLimitTx = await vaultFactory.setExpenseManager(expenseManagerAddress);
+  await setLimitTx.wait();
+  console.log("✅ Đã cấu hình ExpenseManager cho VaultFactory");
+
+  // =============================================================
   // KẾT QUẢ - Các địa chỉ quan trọng cần lưu lại vào file .env
   // =============================================================
   console.log("\n=====================================================");

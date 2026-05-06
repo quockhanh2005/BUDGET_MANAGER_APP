@@ -43,7 +43,16 @@ contract ExpenseManager {
         address indexed vault, 
         uint256 indexed categoryId, 
         uint256 amount, 
-        uint256 totalSpent
+        uint256 totalSpent,
+        string message
+    );
+
+    event VaultActivity(
+        address indexed vault,
+        string activityType,
+        uint256 categoryId,
+        uint256 amount,
+        address actor
     );
 
     // --- Modifier ---
@@ -84,6 +93,7 @@ contract ExpenseManager {
         category.isActive = true;
         
         emit CategoryLimitUpdated(msg.sender, _categoryId, _limitAmount, block.timestamp);
+        emit VaultActivity(msg.sender, "SET_LIMIT", _categoryId, _limitAmount, tx.origin);
     }
 
     /**
@@ -119,7 +129,8 @@ contract ExpenseManager {
         // 3. Cap nhat trang thai va ghi nhan (Checks-Effects-Interactions pattern)
         category.amountSpent += _amount;
 
-        emit ExpenseValidated(msg.sender, _categoryId, _amount, category.amountSpent);
+        emit ExpenseValidated(msg.sender, _categoryId, _amount, category.amountSpent, "Chi tieu hop le");
+        emit VaultActivity(msg.sender, "WITHDRAW", _categoryId, _amount, tx.origin);
         
         return true;
     }

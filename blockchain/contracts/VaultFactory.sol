@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 // Giao dien tuong tac voi FundVault (Clone)
 interface IFundVaultTemplate {
-    function initialize(address owner, address[] memory members, uint256 threshold) external;
+    function initialize(address owner, address[] memory members, uint256 threshold, address expenseManager) external;
 }
 
 /**
@@ -32,6 +32,7 @@ contract VaultFactory is Ownable, Pausable, ReentrancyGuard {
     // --- State Variables ---
     address public immutable initialVaultTemplate;
     address public activeVaultTemplate;
+    address public expenseManager;
 
     // Chi giu lai Mapping xac thuc de Backend hoac Contract khac kiem tra tinh hop le cua Quy
     mapping(address => bool) public isFundFromFactory;
@@ -99,7 +100,7 @@ contract VaultFactory is Ownable, Pausable, ReentrancyGuard {
         newFund = activeVaultTemplate.clone();
         
         // 3. Khoi tao trang thai cho vi moi (Creator la owner)
-        IFundVaultTemplate(newFund).initialize(msg.sender, members, threshold);
+        IFundVaultTemplate(newFund).initialize(msg.sender, members, threshold, expenseManager);
 
         // 4. Luu vet xac thuc On-chain (Cho muc dich bao mat he thong)
         isFundFromFactory[newFund] = true;
@@ -119,6 +120,10 @@ contract VaultFactory is Ownable, Pausable, ReentrancyGuard {
         activeVaultTemplate = newTemplate;
 
         emit TemplateUpgraded(oldTemplate, newTemplate, block.timestamp);
+    }
+
+    function setExpenseManager(address _expenseManager) external onlyOwner {
+        expenseManager = _expenseManager;
     }
 
     // --- Cac ham quan tri rui ro ---
