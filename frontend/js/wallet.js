@@ -219,6 +219,8 @@ async function refreshBalances() {
     isRefreshing = true;
     lastRefreshTime = now;
 
+    const promises = [];
+
     try {
         if (!connectedAddress) {
             isRefreshing = false;

@@ -82,3 +82,17 @@ function closeModal(modalId) {
 function openModal(modalId) {
     document.getElementById(modalId).classList.remove('hidden');
 }
+
+// ========== Danh mục chi tiêu ==========
+function getCategoryName(id) {
+    const names = {
+        1: "Tiền điện",
+        2: "Tiền nước",
+        3: "Tiền mạng",
+        4: "Tiền nhà",
+        5: "Mua sắm",
+        6: "Ăn uống",
+        0: "Khác"
+    };
+    return names[id] || "Không xác định";
+}

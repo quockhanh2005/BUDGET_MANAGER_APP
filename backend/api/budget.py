@@ -1,8 +1,9 @@
 from fastapi import APIRouter, HTTPException, status, Query
 from typing import List, Optional
 from backend.models.budget import (
-    BudgetRequest, BudgetResponse, BudgetMember, AddMemberRequest, 
-    DepositRequest, WithdrawRequestCreate, WithdrawRequestResponse
+    BudgetRequest, BudgetResponse, BudgetMember, AddMemberRequest,
+    DepositRequest, WithdrawRequestCreate, WithdrawRequestResponse,
+    SetCategoryLimitRequest, SetCategoryLimitProposal
 )
 from backend.service.budget import BudgetService
 
@@ -19,6 +20,13 @@ async def create_budget(budget: BudgetRequest):
 @router.get("/", response_model=List[BudgetResponse])
 async def get_budgets(address: Optional[str] = None):
     return budget_service.get_budgets(address)
+
+@router.get("/{budget_id}", response_model=BudgetResponse)
+async def get_budget_by_id(budget_id: str):
+    result = budget_service.get_budget_by_id(budget_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Không tìm thấy quỹ")
+    return result
 
 @router.post("/{budget_id}/members", response_model=BudgetResponse)
 async def join_budget_by_address(budget_id: str, member: BudgetMember):
@@ -55,6 +63,13 @@ async def remove_member(budget_id: str, address: str, operator_address: Optional
 async def get_withdraw_requests(budget_id: str):
     return budget_service.get_withdraw_requests(budget_id)
 
+@router.get("/withdraw-requests/{request_id}", response_model=WithdrawRequestResponse)
+async def get_withdraw_request_by_id(request_id: str):
+    result = budget_service.get_withdraw_request_by_id(request_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Không tìm thấy yêu cầu rút tiền")
+    return result
+
 @router.post("/{budget_id}/withdraw-requests", response_model=WithdrawRequestResponse)
 async def create_withdraw_request(budget_id: str, address: str, request: WithdrawRequestCreate):
     return budget_service.create_withdraw_request(budget_id, address, request.dict())
@@ -88,3 +103,43 @@ async def deposit_to_budget(budget_id: str, request: DepositRequest):
     if not result:
         raise HTTPException(status_code=404, detail=message)
     return result
+
+@router.post("/{budget_id}/limit-proposals", response_model=SetCategoryLimitProposal)
+async def create_limit_proposal(budget_id: str, address: str, request: SetCategoryLimitRequest):
+    return budget_service.create_limit_proposal(budget_id, address, request.dict())
+
+@router.get("/{budget_id}/limit-proposals", response_model=List[SetCategoryLimitProposal])
+async def get_limit_proposals(budget_id: str):
+    return budget_service.get_limit_proposals(budget_id)
+
+@router.get("/limit-proposals/{proposal_id}", response_model=SetCategoryLimitProposal)
+async def get_limit_proposal_by_id(proposal_id: str):
+    result = budget_service.get_limit_proposal_by_id(proposal_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Không tìm thấy đề xuất hạn mức")
+    return result
+
+@router.post("/limit-proposals/{proposal_id}/sign", response_model=SetCategoryLimitProposal)
+async def sign_limit_proposal(proposal_id: str, address: str = Query(...), signature: str = Query(...)):
+    result, msg = budget_service.add_limit_signature(proposal_id, address, signature)
+    if not result:
+        raise HTTPException(status_code=400, detail=msg)
+    return result
+
+@router.post("/limit-proposals/{proposal_id}/executed")
+async def mark_limit_executed(proposal_id: str, tx_hash: str = Query(...)):
+    result = budget_service.mark_limit_executed(proposal_id, tx_hash)
+    if not result:
+        raise HTTPException(status_code=400, detail="Lỗi khi xác nhận thực thi")
+    return {"status": "success"}
+
+@router.delete("/limit-proposals/{proposal_id}")
+async def delete_limit_proposal(proposal_id: str, operator_address: str = Query(...)):
+    result, msg = budget_service.delete_limit_proposal(proposal_id, operator_address)
+    if not result:
+        raise HTTPException(status_code=400, detail=msg)
+    return {"message": msg}
+
+@router.get("/{budget_id}/limits")
+async def get_all_limits(budget_id: str):
+    return budget_service.get_all_category_limits(budget_id)

@@ -12,6 +12,7 @@ from backend.api.member import member_router, membership_router
 from backend.api.budget import router as budget_router
 from backend.api.proposal import router as proposal_router
 from backend.api.wallet import router as wallet_router
+from backend.api.notification import router as notification_router
 
 
 app = FastAPI(title="Budget Manager API")
@@ -33,6 +34,7 @@ app.include_router(membership_router)
 app.include_router(proposal_router)
 
 app.include_router(wallet_router)
+app.include_router(notification_router)
 
 
 @app.on_event("startup")

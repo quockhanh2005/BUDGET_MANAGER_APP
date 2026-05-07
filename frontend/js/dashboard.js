@@ -41,8 +41,14 @@ async function renderDashboard(member) {
         }).catch(err => console.error('Error fetching chainId:', err));
     }
 
-    renderMainTransactions();
-    renderBudgets();
+    try {
+        await renderMainTransactions();
+        await renderBudgets();
+        initNotifications();
+    } catch (e) {
+        console.error('Error rendering dashboard components:', e);
+    }
+    
     currentStep = 'dashboard';
 }
 
@@ -101,28 +107,43 @@ async function logTransaction(txData) {
 async function renderBudgets() {
     const listEl = document.getElementById('budgets-list');
     if (!listEl) return;
+    
     const budgetList = await fetchBudgets();
     if (budgetList.length === 0) {
         listEl.innerHTML = '<div class="empty-state"><p>Bạn chưa tham gia quỹ nào</p></div>';
         return;
     }
+
     listEl.innerHTML = '';
-    for (const budget of budgetList) {
+    
+    // Fetch all balances in parallel
+    const budgetItems = await Promise.all(budgetList.map(async (budget) => {
+        let displayBalance = budget.balance || 0;
+        if (budget.vault_address && budget.vault_address !== 'n/a') {
+            try {
+                displayBalance = await getOnChainBalance(budget.vault_address);
+            } catch (e) {
+                console.warn(`Balance fetch failed for ${budget.vault_address}:`, e);
+            }
+        }
+        return { ...budget, displayBalance };
+    }));
+
+    budgetItems.forEach(budget => {
         const item = document.createElement('div');
         item.className = 'budget-item';
         item.onclick = () => openBudgetDashboard(budget.id);
-        let displayBalance = budget.balance;
-        if (budget.vault_address) { displayBalance = await getOnChainBalance(budget.vault_address); }
+        
         item.innerHTML = `
             <div class="budget-info">
                 <span class="budget-name">${budget.name}</span>
                 <span class="budget-meta">${budget.type} • ${budget.members.length} thành viên</span>
             </div>
             <div class="budget-item-balance">
-                <span class="budget-item-amount">${parseFloat(displayBalance).toFixed(4)}</span>
+                <span class="budget-item-amount">${parseFloat(budget.displayBalance).toFixed(4)}</span>
                 <span class="budget-item-currency">ETH</span>
             </div>
         `;
         listEl.appendChild(item);
-    }
+    });
 }
