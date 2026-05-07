@@ -1,5 +1,4 @@
-
-import asyncio
+import threading
 import os
 from web3 import Web3
 from backend.utils.database import db_instance
@@ -13,8 +12,8 @@ VAULT_ABI = [
     {"inputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "name": "members", "outputs": [{"internalType": "address", "name": "", "type": "address"}], "stateMutability": "view", "type": "function"}
 ]
 
-async def sync_single_vault(w3, budget, budget_collection):
-    """Đồng bộ hóa dữ liệu cho một vault duy nhất"""
+def sync_single_vault(w3, budget, budget_collection):
+    """Đồng bộ hóa dữ liệu cho một vault duy nhất (Synchronous)"""
     vault_address = budget.get("vault_address")
     if not vault_address or vault_address == 'n/a':
         return
@@ -60,34 +59,35 @@ async def sync_single_vault(w3, budget, budget_collection):
     except Exception as e:
         print(f"Error syncing vault {vault_address}: {str(e)}")
 
-async def sync_vaults_periodically():
-    """Vòng lặp quét Blockchain để đồng bộ hóa thành viên và threshold"""
+def sync_vaults_periodically():
+    """Vòng lặp quét Blockchain (Chạy trong thread riêng)"""
     rpc_url = os.getenv("RPC_URL")
     if not rpc_url:
         print("RPC_URL not found in environment. Sync Worker stopped.")
         return
 
+    # Khởi tạo Web3 trong thread này
     w3 = Web3(Web3.HTTPProvider(rpc_url))
     db = db_instance.get_db("budget")
     budget_collection = db["budgets"]
     
-    print(f"[{datetime.now()}] Starting Optimized Sync Worker...")
+    print(f"[{datetime.now()}] Starting Threaded Sync Worker...")
     
     while True:
         try:
             budgets = list(budget_collection.find({"vault_address": {"$exists": True, "$ne": "n/a"}}))
             
-            if budgets:
-                tasks = [sync_single_vault(w3, budget, budget_collection) for budget in budgets]
-                await asyncio.gather(*tasks)
+            for budget in budgets:
+                sync_single_vault(w3, budget, budget_collection)
             
-            await asyncio.sleep(60)
+            time.sleep(60)
             
         except Exception as e:
             print(f"Sync Worker Error: {str(e)}")
-            await asyncio.sleep(60)
+            time.sleep(60)
 
 def start_sync_worker():
-    """Khởi tạo worker trong một luồng riêng biệt"""
-    loop = asyncio.get_event_loop()
-    loop.create_task(sync_vaults_periodically())
+    """Khởi tạo worker trong một luồng (thread) thực sự biệt lập"""
+    thread = threading.Thread(target=sync_vaults_periodically, daemon=True)
+    thread.start()
+

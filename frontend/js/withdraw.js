@@ -9,6 +9,23 @@ async function openWithdrawModal() {
     document.getElementById('withdraw-to').value = connectedAddress;
     document.getElementById('withdraw-modal').classList.remove('hidden');
     document.getElementById('withdraw-amount').focus();
+
+    // Kiểm tra và hiển thị cảnh báo nếu là Vault cũ
+    const budgetList = await fetchBudgets();
+    const budget = budgetList.find(b => b.id === currentBudgetId);
+    const categoryGroup = document.getElementById('withdraw-category').parentElement;
+    
+    try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const vaultContract = new ethers.Contract(budget.vault_address, SHARED_VAULT_ABI, provider);
+        await vaultContract.expenseManager();
+        categoryGroup.style.opacity = '1';
+        categoryGroup.title = '';
+    } catch (e) {
+        // Vault cũ không hỗ trợ danh mục
+        categoryGroup.style.opacity = '0.5';
+        categoryGroup.title = 'Quỹ này không hỗ trợ phân loại danh mục chi tiêu.';
+    }
 }
 
 function selectSpendingSuggestion(name, icon) {
@@ -22,6 +39,8 @@ async function handleWithdraw(event) {
     const title = document.getElementById('withdraw-title').value.trim();
     const to = document.getElementById('withdraw-to').value.trim();
     const amount = document.getElementById('withdraw-amount').value.trim();
+    const categoryId = parseInt(document.getElementById('withdraw-category').value);
+    
     if (!amount || parseFloat(amount) <= 0) { showToast('error', 'Số lượng rút không hợp lệ!'); return; }
     if (!to || !to.startsWith('0x') || to.length !== 42) { showToast('error', 'Địa chỉ người nhận không hợp lệ!'); return; }
 
@@ -38,29 +57,69 @@ async function handleWithdraw(event) {
         const signer = await provider.getSigner();
         const network = await provider.getNetwork();
 
+        // --- KIỂM TRA PHIÊN BẢN VAULT ---
+        const vaultContract = new ethers.Contract(budget.vault_address, SHARED_VAULT_ABI, provider);
+        let isLegacy = false;
+        try {
+            await vaultContract.expenseManager();
+        } catch (e) {
+            isLegacy = true;
+        }
+
         const nonce = Date.now();
         const deadline = Math.floor(Date.now() / 1000) + (24 * 60 * 60);
         const amountWei = ethers.parseEther(amount);
         const domain = { name: "SharedVault", version: "1", chainId: network.chainId, verifyingContract: budget.vault_address };
-        const types = { WithdrawRequest: [{ name: "to", type: "address" }, { name: "amount", type: "uint256" }, { name: "nonce", type: "uint256" }, { name: "deadline", type: "uint256" }] };
-        const value = { to, amount: amountWei, nonce: BigInt(nonce), deadline: BigInt(deadline) };
+        
+        let types, value;
+        if (isLegacy) {
+            types = { 
+                WithdrawRequest: [
+                    { name: "to", type: "address" }, 
+                    { name: "amount", type: "uint256" }, 
+                    { name: "nonce", type: "uint256" }, 
+                    { name: "deadline", type: "uint256" }
+                ] 
+            };
+            value = { to, amount: amountWei, nonce: BigInt(nonce), deadline: BigInt(deadline) };
+        } else {
+            types = { 
+                WithdrawRequest: [
+                    { name: "to", type: "address" }, 
+                    { name: "amount", type: "uint256" }, 
+                    { name: "categoryId", type: "uint256" }, 
+                    { name: "nonce", type: "uint256" }, 
+                    { name: "deadline", type: "uint256" }
+                ] 
+            };
+            value = { to, amount: amountWei, categoryId: BigInt(categoryId), nonce: BigInt(nonce), deadline: BigInt(deadline) };
+        }
 
         updateLoadingText('Vui lòng ký xác nhận trên MetaMask...');
         const signature = await signer.signTypedData(domain, types, value);
-        console.log('Signature created:', signature);
-
+        
         updateLoadingText('Đang lưu đề xuất lên hệ thống...');
         const response = await fetch(`${API_BASE_URL}/budgets/${currentBudgetId}/withdraw-requests?address=${connectedAddress}`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title, to, amount: parseFloat(amount), nonce: Number(nonce), deadline: Number(deadline), signature })
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                title, to, amount: parseFloat(amount), 
+                category_id: isLegacy ? 0 : categoryId, 
+                nonce: Number(nonce), 
+                deadline: Number(deadline), 
+                signature 
+            })
         });
 
         if (response.ok) {
             showToast('success', 'Đề xuất rút tiền đã được tạo thành công!');
             closeModal('withdraw-modal');
             document.getElementById('withdraw-form').reset();
-            fetchAndRenderPendingProposals();
-        } else { const err = await response.json(); throw new Error(err.detail || 'Lỗi khi lưu đề xuất rút tiền'); }
+            if (typeof fetchAndRenderPendingProposals === 'function') fetchAndRenderPendingProposals();
+        } else { 
+            const err = await response.json(); 
+            throw new Error(err.detail || 'Lỗi khi lưu đề xuất rút tiền'); 
+        }
     } catch (error) {
         let errorMsg = error.message;
         if (error.code === 'ACTION_REJECTED') errorMsg = 'Bạn đã từ chối giao dịch.';

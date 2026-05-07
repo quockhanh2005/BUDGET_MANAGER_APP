@@ -2,31 +2,35 @@
    Đăng ký thành viên (Auth/Registration)
    ======================================== */
 
+let isAuthenticating = false;
+
 async function handleContinue() {
+    if (isAuthenticating) return;
     console.log('HandleContinue triggered for address:', connectedAddress);
     if (!connectedAddress) { showToast('error', 'Vui lòng kết nối ví trước!'); return; }
 
+    isAuthenticating = true;
     showLoading('Đang xác thực tài khoản...');
     try {
-        const url = `${API_BASE_URL}/members/?address=${connectedAddress}`;
+        const url = `${API_BASE_URL}/members/?address=${connectedAddress.toLowerCase()}`;
         const response = await fetch(url, { cache: 'no-store' });
         if (response.ok) {
             const member = await response.json();
             currentMemberProfile = member;
-            hideLoading();
             renderDashboard(member);
-            startBalanceAutoRefresh(); // Bắt đầu vòng lặp cập nhật
+            startBalanceAutoRefresh();
             showToast('success', `Chào mừng quay lại, ${member.name}!`);
         } else if (response.status === 404) {
-            hideLoading();
             goToStep(2);
         } else {
             throw new Error('Lỗi máy chủ khi kiểm tra thành viên');
         }
     } catch (error) {
-        hideLoading();
         console.error('API Error:', error);
         showToast('error', 'Lỗi: ' + error.message);
+    } finally {
+        isAuthenticating = false;
+        hideLoading();
     }
 }
 

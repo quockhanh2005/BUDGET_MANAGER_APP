@@ -1,155 +1,110 @@
-# Budget Manager App
+# Budget Manager App - Source Code Analysis & Architecture Logic
 
-Ứng dụng quản lý ngân sách (Budget Manager) tích hợp blockchain, sử dụng FastAPI cho backend và Vanilla JS cho frontend.
-
-## 📂 Cấu trúc mã nguồn
-
-```text
-BUDGET_MANAGER_APP/
-├── backend/            # Mã nguồn Python (FastAPI)
-│   ├── api/            # Các route API (member, v.v.)
-│   ├── models/         # Định nghĩa schema/models (Pydantic/MongoDB)
-│   ├── service/        # Logic nghiệp vụ (Business logic)
-│   ├── utils/          # Các tiện ích (Kết nối DB, v.v.)
-│   └── app.py          # Entry point của backend
-├── frontend/           # Giao diện người dùng (HTML/JS/CSS)
-│   ├── index.html      # Trang chính
-│   ├── app.js          # Logic xử lý frontend và kết nối MetaMask
-│   └── styles.css      # Giao diện ứng dụng
-├── blockchain/         # Smart contracts (Solidity) và scripts liên quan
-├── .venv/              # Môi trường ảo Python
-├── requirements.txt    # Danh sách thư viện backend
-└── .env                # Biến môi trường (DB URL, Private keys, v.v.)
-```
+Tài liệu này phân tích chi tiết toàn bộ mã nguồn của dự án (Blockchain, Backend, Frontend) nhằm hỗ trợ việc viết Document (tài liệu kỹ thuật và hướng dẫn sử dụng) một cách dễ dàng và hệ thống.
 
 ---
 
-## 🚀 Hướng dẫn chạy ứng dụng
+## 1. Kiến Trúc Tổng Thể (System Architecture)
 
-Cần chạy đồng thời cả Backend và Frontend để ứng dụng hoạt động đầy đủ.
-
-### 1. Chạy Backend (Python FastAPI)
-
-Đảm bảo bạn đang ở thư mục gốc của dự án (`BUDGET_MANAGER_APP`).
-
-**Bước 1: Kích hoạt môi trường ảo**
-
-- Trên Linux/macOS:
-  ```bash
-  source .venv/bin/activate
-  ```
-- Trên Windows:
-  ```bash
-  .venv\Scripts\activate
-  ```
-
-**Bước 2: Cài đặt dependencies (nếu chưa có)**
-
-```bash
-pip install -r requirements.txt
-```
-
-**Bước 3: Khởi chạy Server**
-
-```bash
-python3 -m backend.app
-```
-
-Hoặc sử dụng uvicorn trực tiếp:
-
-```bash
-uvicorn backend.app:app --reload --port 8000
-```
-
-Backend sẽ chạy tại: `http://localhost:8000`
+Dự án áp dụng mô hình **Hybrid (Off-chain & On-chain)** kết hợp **Gasless Meta-Transactions**:
+- **On-chain (Blockchain):** Đảm bảo tính minh bạch, lưu trữ tiền thật (ETH/Token), và thực thi logic cốt lõi (rút tiền, giới hạn chi tiêu) dựa trên Multi-sig.
+- **Off-chain (Backend/Database):** Xử lý UI, lưu trữ metadata (tên quỹ, thông tin user, lịch sử không ảnh hưởng số dư), thu thập chữ ký EIP-712 để giảm chi phí gas cho người dùng.
+- **Relayer:** Backend đóng vai trò người thực thi (Relayer), thay mặt người dùng trả phí gas khi một đề xuất đạt đủ chữ ký (Gasless Voting).
 
 ---
 
-### 2. Chạy Frontend (Vanilla JS)
+## 2. Lớp Blockchain (Smart Contracts)
 
-Vì frontend là các tệp tĩnh (static files), bạn có thể chạy bằng bất kỳ trình duyệt nào, nhưng khuyến khích sử dụng một web server đơn giản để tránh lỗi CORS hoặc lỗi đường dẫn.
+Nằm trong thư mục `blockchain/contracts/`. Các Smart Contract được viết bằng Solidity (^0.8.20).
 
-**Cách 1: Sử dụng Python (Đơn giản nhất)**
-Mở một terminal mới tại thư mục gốc và chạy:
+### 2.1. `VaultFactory.sol` (Nhà Máy Tạo Quỹ)
+- **Chức năng:** Tạo ra các quỹ (Vault) mới.
+- **Logic hoạt động:**
+  - Áp dụng pattern **EIP-1167 (Minimal Proxy / Clones)** để nhân bản contract `SharedVault` gốc thay vì deploy lại từ đầu -> **Tiết kiệm 90% phí Gas** khi tạo quỹ mới.
+  - Cập nhật địa chỉ `ExpenseManager` tự động vào quỹ mới tạo.
+  - Emit sự kiện `FundCreated` để Backend lắng nghe và đồng bộ dữ liệu vào MongoDB.
 
-```bash
-python3 -m http.server -d frontend 5500
-```
+### 2.2. `SharedVault.sol` (Quỹ Đa Chữ Ký - Multi-Sig)
+- **Chức năng:** Quản lý số dư và thực thi các giao dịch của một quỹ cụ thể.
+- **Logic hoạt động:**
+  - **Phân quyền:** Owner (người tạo), Member (thành viên có quyền biểu quyết).
+  - **Gasless Voting (EIP-712):** Quá trình biểu quyết không tốn Gas. Người dùng ký số (signature) trên Frontend, Backend thu thập. Khi đủ ngưỡng (`threshold`), một người (hoặc hệ thống Relayer) sẽ gọi hàm `execute...` để submit tất cả chữ ký lên on-chain.
+  - **Chức năng chính:**
+    - `executeWithdraw`: Rút tiền. Tương tác với `ExpenseManager` để kiểm tra xem việc rút tiền có vi phạm giới hạn chi tiêu không.
+    - `executeAddMember` / `executeRemoveMember`: Thêm bớt thành viên, yêu cầu đủ số lượng chữ ký.
+    - `executeSetCategoryLimit`: Đặt giới hạn chi tiêu cho từng danh mục.
+    - `executeCloseFund`: Đóng quỹ (bắt buộc phải có chữ ký của Owner).
 
-Frontend sẽ chạy tại: `http://localhost:5500`
-
-**Cách 2: Sử dụng Live Server (VS Code)**
-
-- Mở thư mục `frontend` trong VS Code.
-- Click chuột phải vào `index.html` và chọn **Open with Live Server**.
-
----
-
-## 🛠 Yêu cầu hệ thống
-
-- **Python**: 3.8 trở lên.
-- **Trình duyệt**: Chrome/Brave/Edge có cài đặt **MetaMask extension**.
-- **Cấu hình**: Cập nhật các thông số cần thiết trong tệp `.env` ở thư mục gốc và `backend/`.
-
-## 📝 Lưu ý
-
-- Đảm bảo Backend đã chạy trước khi thao tác trên Frontend để các yêu cầu API không bị lỗi.
-- Kiểm tra cấu hình kết nối MongoDB và Blockchain trong tệp `.env`.
-
-
-# Tài liệu Kiến trúc Hệ thống & Vận hành: Budget Manager App
-
-Dự án quản lý ngân sách (Budget Manager) tích hợp blockchain hoạt động theo mô hình Hybrid (Web2.5). Nền tảng kết hợp sự tiện lợi của Web2 cho tài chính cá nhân và tính minh bạch, an toàn của Web3 cho quản lý quỹ chung.
-
-## 1. Tổng quan Kiến trúc Hệ thống
-
-Hệ thống được thiết kế theo mô hình phân tầng "Ví trong Ví" (Two-Tier Wallet System), tách biệt rõ ràng luồng xử lý Off-chain và On-chain:
-
-- **Lớp 1 - Ví App Cá nhân (Off-chain):** Được vận hành bởi Backend (FastAPI) và cơ sở dữ liệu (MongoDB). Lớp này đóng vai trò xử lý các giao dịch cá nhân và luân chuyển nội bộ với tốc độ tức thì, không tốn phí mạng lưới (Gas) và bảo vệ tuyệt đối quyền riêng tư dữ liệu của người dùng.
-- **Lớp 2 - Quỹ Nhóm (On-chain):** Được quản lý hoàn toàn bởi hệ thống Smart Contract (Solidity). Lớp này hoạt động như một két sắt chung, đảm bảo sự minh bạch, phi tập trung và thực thi nghiêm ngặt các quy tắc phân quyền rút tiền (Multi-sig).
+### 2.3. `ExpenseManager.sol` (Quản Lý Hạn Mức Chi Tiêu)
+- **Chức năng:** Giám sát và áp đặt hạn mức chi tiêu cho từng danh mục (category) của các Vault.
+- **Logic hoạt động:**
+  - Mô hình Registry: Quản lý tập trung hạn mức của nhiều Vault khác nhau.
+  - **Bảo mật:** Sử dụng `onlyRegisteredVault` (dựa trên danh sách từ `VaultFactory`) để chỉ cho phép các Vault hợp lệ cập nhật dữ liệu chi tiêu.
+  - Khi SharedVault gọi `validateTransaction`, contract này sẽ kiểm tra xem số tiền rút có vượt quá `limitAmount - amountSpent` không. Nếu vượt -> Giao dịch revert.
 
 ---
 
-## 2. Đi sâu Phân tích Cơ chế Vận hành
+## 3. Lớp Backend (FastAPI + MongoDB)
 
-### 2.1. Cơ chế Định danh và Xác thực (Authentication)
-- **MetaMask làm Định danh cốt lõi:** Địa chỉ ví (Public Address) được trích xuất từ MetaMask đóng vai trò là khóa chính (Primary Key) duy nhất để định danh người dùng trong toàn bộ hệ thống.
-- **Xác thực Off-chain (Passwordless):** Hệ thống loại bỏ việc sử dụng mật khẩu truyền thống. Khi đăng nhập, Backend tạo ra một mã Nonce ngẫu nhiên. Người dùng sử dụng Private Key trên MetaMask để ký mã Nonce này (Sign Message). Backend đối chiếu chữ ký bằng thuật toán mã hóa đường cong elliptic (ECDSA). Nếu hợp lệ, phiên làm việc (JWT Token) được cấp. Quá trình này diễn ra an toàn và hoàn toàn miễn phí Gas.
+Nằm trong thư mục `backend/`. 
 
-### 2.2. Cơ chế Quản lý Ví Cá nhân (App Wallet)
-Ví cá nhân hiển thị trên ứng dụng thực chất là số dư được ghi nhận trong cơ sở dữ liệu, hoạt động song song với một Ví Tổng (Treasury Wallet) do hệ thống nắm giữ.
-- **Nạp tiền (Deposit):** Người dùng thực hiện giao dịch chuyển tài sản từ ví MetaMask cá nhân vào Ví Tổng của hệ thống. Dịch vụ nền (Worker) của Backend sẽ lắng nghe sự kiện trên mạng lưới và tự động cộng số dư tương ứng vào cơ sở dữ liệu.
-- **Chuyển tiền nội bộ (Internal Transfer):** Việc luân chuyển tài sản giữa người dùng A và B được thực hiện hoàn toàn bằng các phép toán cộng/trừ trên MongoDB. Giao dịch được xử lý trong vài mili-giây và không phát sinh phí mạng lưới.
-- **Rút tiền (Withdraw):** Backend kiểm tra và trừ số dư trong cơ sở dữ liệu, sau đó điều khiển Ví Tổng tạo một giao dịch On-chain để trả tài sản về địa chỉ MetaMask đích của người dùng.
+### 3.1. Cấu Trúc Database (MongoDB)
+- **budget:** Lưu thông tin quỹ (Tên, ID, Vault Address, Members, Balance tạm tính, Transactions log).
+- **limit_proposals / withdraw_requests:** Lưu trữ các đề xuất rút tiền và đặt giới hạn. Ở đây chứa mảng `signatures` gom các chữ ký từ người dùng.
+- **user:** Lưu thông tin người dùng (Address, Role, Name, tổng phí gas đã dùng).
 
-### 2.3. Cơ chế Quản lý Quỹ Nhóm (Group Fund Mechanism)
-Đây là phân hệ cốt lõi tương tác trực tiếp với Smart Contract, yêu cầu tính minh bạch tuyệt đối.
-- **Khởi tạo Quỹ (EIP-1167 Minimal Proxy):** Thay vì triển khai (deploy) một hợp đồng hoàn toàn mới gây tốn kém, hệ thống sử dụng `FundFactory` để nhân bản hợp đồng `FundVault` theo chuẩn Minimal Proxy. Mỗi quỹ sinh ra có một địa chỉ ví và vùng lưu trữ (Storage) hoàn toàn độc lập, nhưng dùng chung logic mã nguồn, giúp giảm thiểu 90% chi phí Gas.
-- **Nạp tiền vào Quỹ:** Cung cấp hai luồng vận hành song song:
-  1. *Luồng Off-chain (Qua Ví App):* Backend trừ số dư trong cơ sở dữ liệu của thành viên, sử dụng Ví Tổng để nạp tiền vào Smart Contract của Quỹ, đồng thời gọi hàm định danh (`depositFor`) để ghi nhận quyền lợi trực tiếp cho thành viên đó.
-  2. *Luồng On-chain (Qua MetaMask):* Thành viên kết nối trực tiếp ví MetaMask và gọi hàm `deposit()` trên Smart Contract. Người dùng tự chi trả phí Gas cho mạng lưới.
-- **Rút tiền Đa chữ ký (Hybrid Off-chain Multi-sig):** Áp dụng chuẩn EIP-712 để giải quyết bài toán chi phí cho việc đồng thuận:
-  1. *Đề xuất và Bỏ phiếu Off-chain:* Quản trị viên khởi tạo yêu cầu rút tiền. Các quản trị viên khác duyệt yêu cầu bằng cách ký thông điệp (Sign Message) trên MetaMask. Các chữ ký số này được gửi và lưu trữ tại Backend mà không tốn phí Gas.
-  2. *Thực thi On-chain:* Khi số lượng chữ ký đạt ngưỡng đồng thuận (Threshold), một quản trị viên sẽ gọi hàm thực thi duy nhất trên Smart Contract, đính kèm mảng dữ liệu chứa toàn bộ chữ ký hợp lệ. Smart Contract sử dụng hàm `ecrecover` để xác thực tính toàn vẹn của từng chữ ký trước khi giải ngân.
+### 3.2. Cơ chế Relayer (`service/relayer.py`)
+- Đây là trái tim của tính năng Gasless.
+- Chứa Private Key của một ví Admin hệ thống có sẵn ETH.
+- Khi một đề xuất (`withdraw`, `set_limit`) trong DB đạt quá bán số lượng chữ ký (`> member_count / 2`), Backend sẽ gọi Relayer.
+- Relayer dùng Web3.py kết hợp các chữ ký đã gom, build giao dịch, ký bằng ví Admin và gửi lên mạng Blockchain.
+- **Gas Fee Accounting:** Hàm `_charge_gas_to_proposer` sẽ tính toán tiền gas Admin đã chịu và trừ vào "tài khoản ảo" của người đề xuất để hiển thị.
+
+### 3.3. Các API Services chính (`service/budget.py`)
+- **Tạo Quỹ (`create_budget`):** Sau khi Frontend gọi hợp đồng `VaultFactory` tạo quỹ thành công và có `tx_hash`, gửi thông tin cho Backend lưu vào DB.
+- **Đề Xuất Rút Tiền (`create_withdraw_request`):** Tạo Request trạng thái `pending`. Gửi thông báo đến thành viên. Kiểm tra cảnh báo vượt hạn mức thông qua `relayer.get_category_info`.
+- **Ký Đề Xuất (`add_withdraw_signature` / `add_limit_signature`):** 
+  - Lưu chữ ký của member vào DB.
+  - **Auto-Execution Logic:** Kiểm tra nếu số chữ ký `> (tổng member / 2)` -> Gọi Relayer thực thi lên Smart Contract. Nếu thành công -> Cập nhật trạng thái thành `executed`, cập nhật balance, ghi log.
 
 ---
 
-## 3. Cấu trúc Mã nguồn
+## 4. Lớp Frontend (Vanilla JavaScript + Ethers.js)
 
-Dự án được tổ chức theo cấu trúc Hybrid chuẩn mực:
-```text
-BUDGET_MANAGER_APP/
-├── backend/            # Mã nguồn Python (FastAPI)
-│   ├── api/            # Các route API (member, v.v.)
-│   ├── models/         # Định nghĩa schema/models (Pydantic/MongoDB)
-│   ├── service/        # Logic nghiệp vụ (Business logic)
-│   ├── utils/          # Các tiện ích (Kết nối DB, v.v.)
-│   └── app.py          # Entry point của backend
-├── frontend/           # Giao diện người dùng (HTML/JS/CSS)
-│   ├── index.html      # Trang chính
-│   ├── app.js          # Logic xử lý frontend và kết nối MetaMask
-│   └── styles.css      # Giao diện ứng dụng
-├── blockchain/         # Môi trường Hardhat (Smart Contracts, test, scripts)
-├── .venv/              # Môi trường ảo Python
-├── requirements.txt    # Danh sách thư viện backend
-└── .env                # Biến môi trường (DB URL, Private keys, v.v.)
+Nằm trong thư mục `frontend/`. 
+
+### 4.1. Kiến Trúc UI & UX
+- Giao diện dạng Dashboard tài chính chuyên nghiệp.
+- Không dùng framework nặng như React/Vue mà dùng Vanilla JS thuần kết nối DOM. Điều này cần quản lý state thủ công cẩn thận qua biến toàn cục (`_budgetCache`, v.v.).
+
+### 4.2. Quản Lý Ví (Wallet Connection)
+- `app.js` & `auth.js`: Khởi tạo Ethers.js, kiểm tra MetaMask. Xử lý logic đăng nhập/đăng ký bằng cách ký một chuỗi message để xác thực định danh (thay cho mật khẩu truyền thống).
+
+### 4.3. Quản Lý Quỹ (`budget.js`)
+- Render danh sách quỹ từ API. Lấy số dư thực tế từ Blockchain thông qua `getOnChainBalance()`.
+- **Luồng Tạo Quỹ:** 
+  1. Frontend gọi `VaultFactory.createFund()` qua MetaMask của người dùng. (Giai đoạn này user vẫn chịu phí Gas tạo quỹ ban đầu).
+  2. Lắng nghe Event log để lấy `vaultAddress`.
+  3. Gửi thông tin (tên, mô tả, vaultAddress, tx_hash) về Backend lưu trữ.
+
+### 4.4. Đề Xuất & Biểu Quyết (`proposals.js`, `withdraw.js`, `limits.js`)
+- Dùng **EIP-712 (Typed Data Signatures):** Khi member muốn rút tiền hoặc duyệt, Frontend tạo payload EIP-712 chuẩn xác với Smart Contract và gọi `eth_signTypedData_v4` qua MetaMask.
+- Việc này chỉ tạo ra một thông báo ký trên ví MetaMask, **hoàn toàn không tốn phí Gas**.
+- Sau khi có chữ ký, Frontend gửi về Backend (`/budgets/{id}/withdraw-requests/{req_id}/signatures`). Mọi việc submit on-chain sau đó do Backend (Relayer) lo.
+
+---
+
+## 5. Tổng Kết Luồng Hoạt Động (User Flow)
+
+1. **Đăng nhập:** Mở App -> Kết nối MetaMask -> Nếu ví chưa đăng ký, tạo Profile (lưu MongoDB).
+2. **Tạo Quỹ:** Tạo quỹ mới (User tốn gas tạo contract via Factory) -> Ra được SharedVault riêng -> Backend lưu thông tin.
+3. **Thêm Thành Viên:** Admin/Owner tạo đề xuất thêm ví thành viên vào Vault -> Các thành viên hiện tại ký (Gasless) -> Backend Auto-execute.
+4. **Nạp Tiền:** Bất cứ ai cũng có thể chuyển ETH trực tiếp vào Vault Address (hoặc qua UI `deposit.js`). Ghi nhận lịch sử về Backend.
+5. **Cài Đặt Giới Hạn Chi Tiêu (Limits):** Owner tạo đề xuất Limit cho danh mục (ví dụ "Tiền điện": 1 ETH) -> Chờ đủ chữ ký -> Backend Relayer submit hàm `executeSetCategoryLimit` lên on-chain.
+6. **Rút Tiền:** Member A đề xuất rút 0.5 ETH cho "Tiền điện" -> Member B, C vào xem. Nếu thấy hợp lý -> Ký xác nhận.
+7. **Thực thi Rút:** Khi đủ chữ ký -> Backend tự gọi Blockchain `executeWithdraw`. Smart Contract kiểm tra chữ ký hợp lệ -> Kiểm tra ExpenseManager xem 0.5 ETH có vượt Limit 1 ETH không -> Nếu thoả mãn, ETH được chuyển trực tiếp từ Vault đến người nhận.
+
+## 6. Điểm Nhấn Phục Vụ Việc Viết Document
+- **Tính năng Gasless:** Nhấn mạnh việc người dùng chỉ tốn gas khi tạo quỹ ban đầu hoặc tự nạp tiền, còn lại thao tác biểu quyết (Voting) hoàn toàn miễn phí, cải thiện trải nghiệm người dùng Web3.
+- **Smart Limit (Quản trị chi tiêu thông minh):** Sự phân tách xuất sắc giữa Contract giữ tiền (`SharedVault`) và Contract giám sát (`ExpenseManager`) giúp dễ dàng nâng cấp logic hạn mức sau này mà không ảnh hưởng an toàn quỹ.
+- **Hybrid Security:** Contract đảm bảo không ai lấy được tiền trái phép kể cả khi Backend bị hack, Backend làm mượt trải nghiệm UI và tự động hoá việc gửi transaction.

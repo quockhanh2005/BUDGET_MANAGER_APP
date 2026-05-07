@@ -12,6 +12,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
  */
 interface IExpenseManager {
     function validateTransaction(uint256 categoryId, uint256 amount) external returns (bool);
+    function setCategoryLimit(uint256 categoryId, uint256 limitAmount) external;
 }
 
 /**
@@ -58,6 +59,9 @@ contract SharedVault is Initializable, EIP712Upgradeable, ReentrancyGuard {
     bytes32 public constant REMOVE_MEMBER_TYPEHASH = keccak256(
         "RemoveMemberRequest(address oldMember,uint256 newThreshold,uint256 nonce,uint256 deadline)"
     );
+    bytes32 public constant SET_CATEGORY_LIMIT_TYPEHASH = keccak256(
+        "SetCategoryLimitRequest(uint256 categoryId,uint256 limitAmount,uint256 nonce,uint256 deadline)"
+    );
 
     event VaultInitialized(address indexed owner, address[] members, uint256 threshold);
     event Deposit(address indexed sender, address indexed onBehalfOf, uint256 amount);
@@ -81,7 +85,8 @@ contract SharedVault is Initializable, EIP712Upgradeable, ReentrancyGuard {
     function initialize(
         address _owner,
         address[] memory _members,
-        uint256 _threshold 
+        uint256 _threshold,
+        address _expenseManager
     ) external initializer {
         __EIP712_init("SharedVault", "1");
 
@@ -106,6 +111,7 @@ contract SharedVault is Initializable, EIP712Upgradeable, ReentrancyGuard {
         threshold = _threshold;
         activeMemberCount = _members.length;
         state = VaultState.Active;
+        expenseManager = IExpenseManager(_expenseManager);
         
         emit VaultInitialized(_owner, _members, _threshold);
     }
@@ -286,6 +292,27 @@ contract SharedVault is Initializable, EIP712Upgradeable, ReentrancyGuard {
         threshold = _newThreshold;
 
         emit MemberRemoved(_oldMember, _newThreshold);
+    }
+
+    /**
+     * @dev ROLE 2: Member - Bieu quyet thiet lap han muc chi tieu theo danh muc.
+     */
+    function executeSetCategoryLimit(
+        uint256 _categoryId,
+        uint256 _limitAmount,
+        uint256 _nonce,
+        uint256 _deadline,
+        bytes[] calldata _signatures
+    ) external nonReentrant onlyActive {
+        require(address(expenseManager) != address(0), "ExpenseManager chua duoc thiet lap");
+
+        bytes32 structHash = keccak256(
+            abi.encode(SET_CATEGORY_LIMIT_TYPEHASH, _categoryId, _limitAmount, _nonce, _deadline)
+        );
+        _verifySignatures(structHash, _nonce, _deadline, _signatures);
+
+        // Goi sang ExpenseManager de thiet lap han muc
+        IExpenseManager(address(expenseManager)).setCategoryLimit(_categoryId, _limitAmount);
     }
 
     function getBalance() public view returns (uint256) {

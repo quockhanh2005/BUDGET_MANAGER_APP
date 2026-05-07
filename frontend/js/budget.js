@@ -15,6 +15,14 @@ async function fetchBudgets() {
     } catch (err) { console.error('Fetch Budgets Error:', err); return []; }
 }
 
+async function fetchBudgetDetail(budgetId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/budgets/${budgetId}`);
+        if (response.ok) return await response.json();
+        return null;
+    } catch (err) { console.error('Fetch Budget Detail Error:', err); return null; }
+}
+
 function goToBudgetManagement() {
     showLoading('Đang tải trung tâm quản lý quỹ...');
     setTimeout(() => { renderBudgetManagement(); goToStep('budget-management'); hideLoading(); }, 500);
@@ -28,23 +36,30 @@ async function renderBudgetManagement() {
     document.getElementById('total-budgets-count').textContent = budgetList.length;
     document.getElementById('most-active-budget').textContent = budgetList[0]?.name || '--';
 
-    // Fetch on-chain balances and attach to each budget
-    let totalOnChain = 0;
-    for (const budget of budgetList) {
+    // Fetch on-chain balances in parallel and attach to each budget
+    const budgetItems = await Promise.all(budgetList.map(async (budget) => {
+        let displayBalance = 0;
         if (budget.vault_address) {
-            const bal = await getOnChainBalance(budget.vault_address);
-            budget._displayBalance = parseFloat(bal);
+            try {
+                const bal = await getOnChainBalance(budget.vault_address);
+                displayBalance = parseFloat(bal);
+            } catch (e) {
+                console.warn(`Balance fetch failed for ${budget.vault_address}:`, e);
+                displayBalance = budget.balance ?? 0;
+            }
         } else {
-            budget._displayBalance = budget.balance ?? 0;
+            displayBalance = budget.balance ?? 0;
         }
-        totalOnChain += budget._displayBalance;
-
+        
         // Determine status: active if balance > 0 OR has more than 1 member
-        budget._isActive = budget._displayBalance > 0 || (budget.members?.length ?? 0) > 1;
-    }
+        const isActive = displayBalance > 0 || (budget.members?.length ?? 0) > 1;
+        
+        return { ...budget, _displayBalance: displayBalance, _isActive: isActive };
+    }));
 
+    const totalOnChain = budgetItems.reduce((sum, b) => sum + b._displayBalance, 0);
     document.getElementById('total-budgeted-amount').textContent = totalOnChain.toFixed(4);
-    _budgetCache = budgetList;
+    _budgetCache = budgetItems;
 
     // Update tab counts
     const activeCount   = budgetList.filter(b => b._isActive).length;

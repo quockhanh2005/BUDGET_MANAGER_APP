@@ -1131,6 +1131,7 @@ body {
   position: absolute;
   top: 20px;
   right: 22px;
+  left: 5px;
   font-size: 28px;
   opacity: 0.18;
   pointer-events: none;
@@ -2927,6 +2928,13 @@ body {
   border: 1px solid rgba(255, 152, 0, 0.25);
 }
 
+.suggestion-icon.suggestion-purple {
+  background: hsla(280, 70%, 60%, 0.15);
+  color: #d1d1ff;
+  border: 1px solid hsla(280, 70%, 60%, 0.3);
+  box-shadow: 0 0 12px hsla(280, 70%, 60%, 0.25);
+}
+
 .suggestion-text {
   flex: 1;
   display: flex;
@@ -3004,4 +3012,438 @@ body {
 
 .type-select-item.active span {
   color: var(--accent-gold);
+}
+
+/* ========================================
+   Reporting & Charts
+   ======================================== */
+.stat-card {
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; width: 4px; height: 100%;
+}
+
+.stat-card.income::before { background: var(--success); }
+.stat-card.expense::before { background: var(--danger); }
+.stat-card.balance::before { background: var(--primary); }
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--accent-gold);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.stat-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  font-family: "JetBrains Mono", monospace;
+  letter-spacing: -0.02em;
+}
+
+.stat-card.income .stat-value { color: var(--success); text-shadow: 0 0 15px rgba(0, 255, 204, 0.3); }
+.stat-card.expense .stat-value { color: var(--danger); text-shadow: 0 0 15px rgba(255, 51, 102, 0.3); }
+.stat-card.balance .stat-value.positive { color: var(--success); }
+.stat-card.balance .stat-value.negative { color: var(--danger); }
+
+.stat-value small {
+  font-size: 0.9rem;
+  font-weight: 500;
+  opacity: 0.6;
+}
+
+.chart-container {
+  background: rgba(255, 255, 255, 0.02);
+  padding: 24px;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.2);
+}
+
+.category-report-row {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.category-report-row:hover {
+  background: rgba(255, 255, 255, 0.07) !important;
+  transform: translateX(8px);
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.positive { color: var(--success) !important; }
+.negative { color: var(--danger) !important; }
+
+/* Custom Scrollbar for Category List */
+#report-category-list {
+  max-height: 250px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+#report-category-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+#report-category-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#report-category-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+/* ========================================
+   Notification UI
+   ======================================== */
+.notification-btn {
+    position: relative;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.notification-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent-gold);
+    color: var(--accent-gold);
+}
+
+.notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: var(--danger);
+    color: white;
+    font-size: 10px;
+    font-weight: 800;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--bg-dark);
+    box-shadow: 0 0 10px rgba(255, 51, 102, 0.4);
+}
+
+.notification-modal-content {
+    max-width: 500px !important;
+}
+
+.notification-list-full {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: 10px 5px;
+}
+
+.notification-item {
+    display: flex;
+    gap: 15px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.notification-item:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: var(--primary-light);
+    transform: translateX(5px);
+}
+
+.notification-item.unread {
+    background: hsla(var(--primary-hue), 60%, 50%, 0.08);
+    border-color: hsla(var(--primary-hue), 60%, 50%, 0.3);
+}
+
+.notification-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    flex-shrink: 0;
+}
+
+.notification-content {
+    flex: 1;
+}
+
+.notification-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.notification-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.notification-time {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.notification-msg {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.unread-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--primary);
+    border-radius: 50%;
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    box-shadow: 0 0 10px var(--primary-glow);
+}
+
+/* Spending Management UI */
+.highlighted-suggestion {
+    background: linear-gradient(90deg, hsla(30, 100%, 50%, 0.1), transparent) !important;
+    border: 1px solid rgba(255, 165, 0, 0.3) !important;
+}
+
+.highlighted-suggestion:hover {
+    background: linear-gradient(90deg, hsla(30, 100%, 50%, 0.15), transparent) !important;
+    border-color: rgba(255, 165, 0, 0.5) !important;
+}
+
+.suggestion-orange {
+    background: rgba(255, 165, 0, 0.2) !important;
+    color: #ffa500 !important;
+}
+
+.limit-badge {
+    background: rgba(255, 165, 0, 0.15) !important;
+    color: #ffa500 !important;
+}
+
+/* ========================================
+   Proposal & Voting Cards (Premium)
+   ======================================== */
+.proposal-card {
+  position: relative;
+  background: rgba(20, 10, 35, 0.4);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 16px;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: slideInRight 0.5s ease-out both;
+}
+
+.proposal-card:hover {
+  transform: translateX(5px);
+  background: rgba(30, 15, 50, 0.6);
+  border-color: rgba(255, 215, 0, 0.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.proposal-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: 4px 0 0 4px;
+}
+
+.proposal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.proposal-type {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 4px 10px;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.proposal-votes {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.votes-count {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.votes-label {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.proposal-main {
+  flex: 1;
+}
+
+.proposal-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+
+.proposal-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.proposal-progress-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 4px 0;
+}
+
+.proposal-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 10px currentColor;
+}
+
+.proposal-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.btn-proposal {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  text-transform: uppercase;
+}
+
+.btn-sign {
+  background: var(--warning);
+  color: #000;
+}
+
+.btn-sign:hover {
+  background: #ffb833;
+  box-shadow: 0 0 15px rgba(255, 165, 0, 0.3);
+}
+
+.btn-execute {
+  background: var(--success);
+  color: #000;
+}
+
+.btn-execute:hover {
+  background: #33ffdd;
+  box-shadow: 0 0 15px rgba(0, 255, 204, 0.3);
+}
+
+.btn-cancel-proposal {
+  padding: 10px 14px;
+  background: rgba(255, 82, 82, 0.1);
+  color: #ff5252;
+  border: 1px solid rgba(255, 82, 82, 0.2);
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-cancel-proposal:hover {
+  background: rgba(255, 82, 82, 0.2);
+  border-color: #ff5252;
+}
+
+.signed-badge {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: var(--success);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
 }

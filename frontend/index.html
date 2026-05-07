@@ -31,6 +31,7 @@
     rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="icon" type="image/png" href="assets/logo.png" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
@@ -306,16 +307,27 @@
               <p class="description">Quản lý tài chính cá nhân của bạn</p>
             </div>
             <div class="account-status">
-              <div class="network-selector" id="network-selector-container">
-                <div class="current-network" id="current-network-display" onclick="toggleNetworkDropdown(event)">
-                  <span class="status-dot"></span>
-                  <span id="dashboard-wallet-status">Đang kết nối: --</span>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                </div>
-                <div class="network-dropdown hidden" id="network-dropdown">
-                  <div class="network-option" onclick="handleSwitchNetwork('0xaa36a7', event)">Sepolia Testnet</div>
-                  <div class="network-option" onclick="handleSwitchNetwork('0x1', event)">Ethereum Mainnet</div>
-                  <div class="network-option" onclick="handleSwitchNetwork('0x539', event)">Localhost (Hardhat)</div>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <!-- Nút thông báo -->
+                <button class="btn-icon-md notification-btn" onclick="toggleNotificationPanel()" id="notification-btn">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                  </svg>
+                  <span class="notification-badge hidden" id="notification-badge">0</span>
+                </button>
+
+                <div class="network-selector" id="network-selector-container">
+                  <div class="current-network" id="current-network-display" onclick="toggleNetworkDropdown(event)">
+                    <span class="status-dot"></span>
+                    <span id="dashboard-wallet-status">Đang kết nối: --</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
+                  <div class="network-dropdown hidden" id="network-dropdown">
+                    <div class="network-option" onclick="handleSwitchNetwork('0xaa36a7', event)">Sepolia Testnet</div>
+                    <div class="network-option" onclick="handleSwitchNetwork('0x1', event)">Ethereum Mainnet</div>
+                    <div class="network-option" onclick="handleSwitchNetwork('0x539', event)">Localhost (Hardhat)</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -447,6 +459,26 @@
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
                 </button>
                 <div class="utilities-dropdown hidden" id="utilities-dropdown">
+                  <button onclick="openReportModal('single'); closeUtilitiesDropdown()"
+                    style="width:100%;background:transparent;border:none;padding:13px 16px;display:flex;align-items:center;gap:10px;color:var(--text-primary);cursor:pointer;font-size:13.5px;font-weight:600;transition:background 0.2s;text-align:left;"
+                    onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                    <span style="width:30px;height:30px;background:hsla(var(--primary-hue), 60%, 50%, 0.15);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--primary-light)" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2z"/><path d="M7 10l3 3 3-3 4 4"/></svg>
+                    </span>
+                    <div><div>Báo cáo chi tiêu</div><div style="font-size:11px;color:var(--text-muted);font-weight:400;margin-top:1px;">Xem phân tích thu chi của quỹ</div></div>
+                  </button>
+
+                  <button onclick="openChangeThresholdModal(); closeUtilitiesDropdown()"
+                    style="width:100%;background:transparent;border:none;padding:13px 16px;display:flex;align-items:center;gap:10px;color:var(--text-primary);cursor:pointer;font-size:13.5px;font-weight:600;transition:background 0.2s;text-align:left;"
+                    onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                    <span style="width:30px;height:30px;background:rgba(255,165,0,0.15);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffa500" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+                    </span>
+                    <div><div>Đổi ngưỡng duyệt</div><div style="font-size:11px;color:var(--text-muted);font-weight:400;margin-top:1px;">Thay đổi số chữ ký yêu cầu</div></div>
+                  </button>
+
+                  <div style="height:1px; background:var(--border); margin:4px 16px; opacity:0.5;"></div>
+
                   <button onclick="handleDeleteBudget(); closeUtilitiesDropdown()"
                     style="width:100%;background:transparent;border:none;padding:13px 16px;display:flex;align-items:center;gap:10px;color:#ff6b6b;cursor:pointer;font-size:13.5px;font-weight:600;transition:background 0.2s;text-align:left;"
                     onmouseover="this.style.background='rgba(244,67,54,0.12)'" onmouseout="this.style.background='transparent'">
@@ -535,9 +567,14 @@
                     <span class="suggestion-text"><span class="suggestion-label">Xóa thành viên</span><span class="suggestion-desc">Xem hướng dẫn xóa thành viên</span></span>
                     <svg class="suggestion-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
                   </button>
-                  <button class="suggestion-row" onclick="openChangeThresholdModal()">
-                    <span class="suggestion-icon suggestion-orange"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg></span>
-                    <span class="suggestion-text"><span class="suggestion-label">Đổi ngưỡng duyệt</span><span class="suggestion-desc">Thay đổi số chữ ký yêu cầu</span></span>
+                  <button class="suggestion-row highlighted-suggestion" onclick="openSetLimitModal()">
+                    <span class="suggestion-icon suggestion-orange"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/><circle cx="12" cy="12" r="10"/></svg></span>
+                    <span class="suggestion-text"><span class="suggestion-label">Quản lý ngưỡng chi tiêu</span><span class="suggestion-desc">Đặt hạn mức tối đa cho từng hạng mục</span></span>
+                    <span class="badge badge-warning">Mới</span>
+                  </button>
+                  <button class="suggestion-row" onclick="openReportModal('single')">
+                    <span class="suggestion-icon suggestion-purple"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 16V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2z"/><path d="M7 10l3 3 3-3 4 4"/></svg></span>
+                    <span class="suggestion-text"><span class="suggestion-label">Báo cáo chi tiêu quỹ</span><span class="suggestion-desc">Xem phân tích chi tiêu của riêng quỹ này</span></span>
                     <svg class="suggestion-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
                   </button>
                 </div>
@@ -626,14 +663,6 @@
                       <line x1="23" y1="11" x2="17" y2="11" />
                     </svg></div>
                   <span>Tham gia Quỹ</span><option value=""></option>
-                </button>
-                <button class="action-item" onclick="showToast('info', 'Xem báo cáo chi tiết')">
-                  <div class="action-icon blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-                      stroke="currentColor" stroke-width="2">
-                      <path d="M21 16V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2z" />
-                      <path d="M7 10l3 3 3-3 4 4" />
-                    </svg></div>
-                  <span>Báo cáo chi tiêu</span>
                 </button>
               </div>
             </div>
@@ -928,6 +957,18 @@
           <input type="number" id="withdraw-amount" step="0.0001" min="0.0001" placeholder="0.05" required />
         </div>
         <div class="form-group">
+        <div class="form-group">
+          <label for="withdraw-category">Danh mục chi tiêu</label>
+          <select id="withdraw-category" class="custom-select" required style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-input); color: var(--text-primary); font-family: inherit;">
+            <option value="1">Tiền điện</option>
+            <option value="2">Tiền nước</option>
+            <option value="3">Tiền mạng</option>
+            <option value="4">Tiền nhà</option>
+            <option value="5">Mua sắm</option>
+            <option value="6">Ăn uống</option>
+            <option value="0">Khác</option>
+          </select>
+        </div>
           <label for="withdraw-to">Địa chỉ người nhận</label>
           <input type="text" id="withdraw-to" placeholder="0x..." required />
           <span class="form-hint">Mặc định là địa chỉ ví của bạn.</span>
@@ -995,6 +1036,58 @@
     </div>
   </div>
 
+  </div>
+
+  <!-- Modal Báo Cáo Chi Tiêu -->
+  <div class="modal hidden" id="report-modal">
+    <div class="modal-content" style="max-width: 900px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <img src="assets/logo.png" alt="Logo" width="24" height="24" style="border-radius: 4px;">
+          <h3 id="report-modal-title">Báo Cáo Chi Tiêu</h3>
+        </div>
+        <button class="btn-close" onclick="closeModal('report-modal')">×</button>
+      </div>
+      
+      <div class="report-overview-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 24px;">
+        <div class="stat-card income">
+          <span class="stat-label">Tổng tiền vào</span>
+          <div class="stat-value"><span id="report-total-income">0.00</span> <small>ETH</small></div>
+        </div>
+        <div class="stat-card expense">
+          <span class="stat-label">Tổng tiền ra</span>
+          <div class="stat-value"><span id="report-total-expense">0.00</span> <small>ETH</small></div>
+        </div>
+        <div class="stat-card balance">
+          <span class="stat-label">Dòng tiền thuần</span>
+          <div class="stat-value"><span id="report-net-flow">0.00</span> <small>ETH</small></div>
+        </div>
+      </div>
+
+      <div class="report-charts-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 20px;">
+        <div class="chart-container">
+          <h4 style="margin-bottom: 15px; text-align: center; color: var(--text-secondary);">Phân bổ chi tiêu theo hạng mục</h4>
+          <canvas id="spendingCategoryChart"></canvas>
+        </div>
+        <div class="chart-container">
+          <h4 style="margin-bottom: 15px; text-align: center; color: var(--text-secondary);">Thu nhập vs Chi tiêu</h4>
+          <canvas id="incomeExpenseChart"></canvas>
+        </div>
+      </div>
+
+      <div class="report-details-section" style="margin-top: 30px;">
+        <h4 style="margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">Chi tiết theo hạng mục</h4>
+        <div id="report-category-list" style="display: flex; flex-direction: column; gap: 10px;">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+
+      <div class="modal-footer" style="margin-top: 30px; padding-top: 15px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('report-modal')">Đóng</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
   <script src="abi.js"></script>
 
@@ -1012,6 +1105,71 @@
   <script src="js/deposit.js"></script>
   <script src="js/withdraw.js"></script>
   <script src="js/transfer.js"></script>
+  <script src="js/report.js"></script>
+  <script src="js/notification.js"></script>
+  <script src="js/limits.js"></script>
+  <!-- Modal Thông báo -->
+  <div class="modal hidden" id="notification-modal">
+    <div class="modal-content notification-modal-content">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <h3 style="margin:0;">Thông báo hệ thống</h3>
+          <span class="badge badge-primary" id="notification-count-modal">0</span>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn-text" onclick="markAllNotificationsRead()" style="font-size:12px;">Đánh dấu tất cả đã đọc</button>
+          <button class="btn-close" onclick="closeModal('notification-modal')">×</button>
+        </div>
+      </div>
+      <div class="notification-list-full" id="notification-list-full">
+        <div class="empty-state">
+          <p>Không có thông báo nào</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Đặt Ngưỡng Chi Tiêu (Spending Management) -->
+  <div class="modal hidden" id="set-limit-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Quản lý Ngưỡng Chi Tiêu</h3>
+        <button class="btn-close" onclick="closeModal('set-limit-modal')">×</button>
+      </div>
+      <form id="set-limit-form" onsubmit="handleSetLimit(event)">
+        <div class="form-group">
+          <label for="limit-category">Hạng mục chi tiêu</label>
+          <select id="limit-category" class="custom-select" required>
+            <option value="1">Tiền điện</option>
+            <option value="2">Tiền nước</option>
+            <option value="3">Tiền mạng</option>
+            <option value="4">Tiền nhà</option>
+            <option value="5">Mua sắm</option>
+            <option value="6">Ăn uống</option>
+            <option value="0">Khác</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="limit-amount">Ngưỡng chi tiêu tối đa (ETH)</label>
+          <input type="number" id="limit-amount" step="0.0001" placeholder="Nhập số ETH..." required />
+          <span class="form-hint">Nếu chi tiêu vượt ngưỡng này, hệ thống sẽ yêu cầu đủ phiếu bầu để thực thi.</span>
+        </div>
+        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border);">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('set-limit-modal')">Hủy</button>
+          <button type="submit" class="btn btn-primary" style="background: var(--gold-gradient); border: none; color: var(--bg-deep); font-weight: 700; padding: 12px 24px;">Tạo đề xuất đặt ngưỡng</button>
+        </div>
+      </form>
+
+      <!-- Section Hiển thị ngưỡng hiện tại -->
+      <div id="current-limits-container" style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border);">
+        <h4 style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-gold); margin-bottom: 15px;">📊 Hạn mức hiện tại (On-chain)</h4>
+        <div id="current-limits-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div style="grid-column: span 2; text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 20px;">Đang tải dữ liệu hạn mức...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="js/app.js"></script>
 </body>
 

@@ -38,11 +38,14 @@ const WALLET_FACTORY_ABI = [
 ];
 
 const SHARED_VAULT_ABI = [
-    "function initialize(address _owner, address[] _members, uint256 _threshold)",
-    "function executeWithdraw(address payable _to, uint256 _amount, uint256 _nonce, uint256 _deadline, bytes[] _signatures)",
+    "function initialize(address _owner, address[] _members, uint256 _threshold, address _expenseManager)",
+    "function executeWithdraw(address payable _to, uint256 _amount, uint256 _categoryId, uint256 _nonce, uint256 _deadline, bytes[] _signatures)",
+    "function executeSetCategoryLimit(uint256 _categoryId, uint256 _limitAmount, uint256 _nonce, uint256 _deadline, bytes[] _signatures)",
     "function executeCloseFund(uint256 _nonce, uint256 _deadline, bytes[] _signatures)",
     "function executeAddMember(address _newMember, uint256 _newThreshold, uint256 _nonce, uint256 _deadline, bytes[] _signatures)",
     "function executeRemoveMember(address _oldMember, uint256 _newThreshold, uint256 _nonce, uint256 _deadline, bytes[] _signatures)",
+    "function setExpenseManager(address _expenseManager)",
+    "function expenseManager() view returns (address)",
     "function isMember(address) view returns (bool)",
     "function threshold() view returns (uint256)",
     "function activeMemberCount() view returns (uint256)",
@@ -51,8 +54,9 @@ const SHARED_VAULT_ABI = [
     "function executedNonces(uint256) view returns (bool)",
     "function getBalance() view returns (uint256)",
     "event Deposit(address indexed sender, address indexed onBehalfOf, uint256 amount)",
-    "event WithdrawExecuted(uint256 indexed nonce, address indexed to, uint256 amount)",
+    "event WithdrawExecuted(uint256 indexed nonce, address indexed to, uint256 amount, uint256 categoryId)",
     "event MemberAdded(address indexed newMember, uint256 newThreshold)",
     "event MemberRemoved(address indexed oldMember, uint256 newThreshold)",
+    "event CategoryLimitUpdated(address indexed vault, uint256 indexed categoryId, uint256 newLimit, uint256 timestamp)",
     "receive() payable"
 ];
